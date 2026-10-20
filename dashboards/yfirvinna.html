@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yfirvinnugreining BLEND</title>
+<script src="../data/manudir.js"></script><script src="../app/load-data.js" data-key="yfirvinna"></script>
+<style>
+:root {
+  --navy:  #1B2A4A; --blue:  #2C4A72; --mid:   #2E75B6;
+  --light: #D6E4F0; --pale:  #EEF4FA; --bg:    #f4f7fb;
+  --text:  #1a1a2e; --muted: #6b7280; --border:#d1dae8;
+  --red:   #C0392B; --redk:  #8B0000; --redl:  #FADBD8;
+  --grn:   #0D9488; --grnl:  #D1FAF6;
+  --warn:  #E67E22; --warnl: #FDEBD0;
+  --amb:   #b45309; --ambl:  #fef3c7;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+
+.hdr{background:var(--navy);color:#fff;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--mid);}
+.hdr h1{font-size:19px;font-weight:700;}
+.hdr p{font-size:11px;opacity:.7;margin-top:2px;}
+.badge-hdr{background:var(--mid);padding:6px 14px;border-radius:4px;font-size:12px;font-weight:600;letter-spacing:.5px;}
+
+.tabs{background:var(--blue);display:flex;gap:2px;padding:0 32px;overflow-x:auto;}
+.tab{padding:11px 18px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:#fff;}
+.tab.active{color:#fff;border-bottom-color:#7EC8E3;background:rgba(255,255,255,.08);}
+
+.main{padding:24px 32px;max-width:1500px;}
+.panel{display:none;} .panel.active{display:block;}
+
+.note{background:var(--pale);border-left:3px solid var(--mid);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12px;color:var(--navy);margin-bottom:16px;}
+.note.summer{border-color:var(--grn);background:var(--grnl);}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;}
+.kpi{background:#fff;border-radius:6px;padding:16px 18px;border:1px solid var(--border);border-top:3px solid var(--mid);}
+.kpi.red{border-top-color:var(--red);}
+.kpi.grn{border-top-color:var(--grn);}
+.kpi.amb{border-top-color:var(--warn);}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:5px;}
+.kpi-val{font-size:25px;font-weight:700;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.kpi-val.red{color:var(--red);} .kpi-val.grn{color:var(--grn);} .kpi-val.amb{color:var(--warn);}
+
+.sec{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.6px;padding:0 0 8px;border-bottom:2px solid var(--light);margin-bottom:12px;}
+
+.card-wrap{background:#fff;border-radius:6px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;}
+.card-title{background:var(--navy);color:#fff;padding:9px 16px;font-size:11px;font-weight:600;letter-spacing:.4px;}
+.chart-box{background:#fff;border-radius:6px;border:1px solid var(--border);padding:18px 22px;margin-bottom:18px;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:var(--pale);}
+th{padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--navy);letter-spacing:.4px;border-bottom:2px solid var(--light);white-space:nowrap;}
+th.l{text-align:left;}
+td{padding:7px 10px;text-align:right;border-bottom:1px solid #edf1f7;font-variant-numeric:tabular-nums;}
+td.l{text-align:left;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--pale);}
+tr.sub td{background:var(--pale);font-weight:600;}
+tr.tot td{background:var(--navy);color:#fff;font-weight:700;border-bottom:none;}
+
+.bdg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.bdg.red{background:var(--redl);color:var(--red);}
+.bdg.grn{background:var(--grnl);color:#0f766e;}
+.bdg.warn{background:var(--warnl);color:#9a3412;}
+.bdg.amb{background:var(--ambl);color:var(--amb);}
+.bdg.blu{background:var(--light);color:var(--navy);}
+
+.dpos{color:var(--red);font-weight:700;} .dneg{color:var(--grn);font-weight:700;} .dok{color:var(--muted);}
+
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.kgcard{background:#fff;border-radius:6px;border:1px solid var(--border);padding:13px 15px;border-top:4px solid var(--mid);}
+.kgcard.over{} .kgcard.good{border-top-color:var(--grn);}
+.kgcard .code{font-size:10px;color:var(--muted);font-weight:700;margin-bottom:3px;}
+.kgcard .nm{font-size:11px;color:var(--text);margin-bottom:8px;line-height:1.3;min-height:30px;}
+.kgcard .big{font-size:21px;font-weight:800;}
+.kgcard .row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px;}
+
+.filter-row{display:flex;gap:7px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.fbtn{padding:4px 11px;border-radius:18px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);transition:all .1s;}
+.fbtn:hover{border-color:var(--mid);color:var(--navy);}
+.fbtn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+.sbox{padding:5px 9px;border-radius:4px;border:1.5px solid var(--border);font-size:12px;outline:none;width:190px;}
+.sbox:focus{border-color:var(--mid);}
+
+.alrt{border-radius:5px;padding:10px 14px;font-size:12px;margin-bottom:10px;display:flex;gap:8px;}
+.alrt.red{background:var(--redl);border-left:3px solid var(--red);color:#7b1d1d;}
+.alrt.warn{background:var(--warnl);border-left:3px solid var(--warn);color:#7c2d12;}
+.alrt.grn{background:var(--grnl);border-left:3px solid var(--grn);color:#065f46;}
+.alrt-ic{font-size:14px;flex-shrink:0;}
+
+.fn{font-size:11px;color:var(--muted);margin-top:18px;padding-top:10px;border-top:1px solid var(--border);}
+
+/* Leiðbeiningar */
+.lb-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.ib{background:#fff;border-radius:6px;border:1px solid var(--border);padding:15px 17px;font-size:13px;line-height:1.8;margin-bottom:18px;}
+.ib ul{margin:8px 0 0 16px;list-style:disc;}
+code{font-family:monospace;font-size:11px;background:var(--pale);padding:1px 5px;border-radius:3px;}
+
+/* Snjallsímar og þröngir skjáir */
+html,body{max-width:100%;overflow-x:hidden;}
+.chart-box{position:relative;}
+.chart-box canvas{max-width:100%;}
+@media (max-width:1100px){
+  .kpi-strip{grid-template-columns:repeat(3,1fr);}
+  .cards{grid-template-columns:repeat(2,1fr);}
+  .card-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .card-wrap .card-title{position:sticky;left:0;}
+}
+@media (max-width:760px){
+  .hdr{padding:14px 16px;flex-wrap:wrap;gap:10px;}
+  .hdr h1{font-size:16px;}
+  .tabs{padding:0 16px;}
+  .main{padding:16px;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .kpi{padding:12px 12px;}
+  .kpi-val{font-size:21px;}
+  .lb-grid{grid-template-columns:1fr;}
+  .chart-box{padding:12px 10px;}
+  .sbox{width:100%;}
+}
+@media (max-width:480px){
+  .kpi-strip{grid-template-columns:1fr 1fr;}
+  .cards{grid-template-columns:1fr;}
+  .kgcard .nm{min-height:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>Yfirvinnugreining — Bráða-, lyflækninga- og endurhæfingarþjónusta</h1>
+    <p>Landspítali · Fjármálasvið · Greiningareining &nbsp;|&nbsp; Gögn: VS-kerfi og stöðugildayfirlit</p>
+  </div>
+  <div class="badge-hdr" data-m="badge"></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active"  onclick="showTab('svid')">① Sviðið í heild</div>
+  <div class="tab" onclick="showTab('svideining')">② Sviðseiningar</div>
+  <div class="tab" onclick="showTab('vidfong')">③ Viðföng</div>
+  <div class="tab" onclick="showTab('leidb')">④ Leiðbeiningar</div>
+</div>
+
+<div class="main">
+
+<!-- ══════ TAB 1 — SVIÐIÐ Í HEILD ══════ -->
+<div id="panel-svid" class="panel active">
+  <div class="note">
+    <strong>Viðmið:</strong> 3,5% yfirvinnuhlutfall · 8,0 klst./vakt · 173,4 klst./mán.
+    &nbsp;|&nbsp; Viðmiðunarvaktir = DV stg. × 173,4 × 3,5% ÷ 8,0
+    &nbsp;|&nbsp; Kostnaðarverð byggt á apr+maí launagögnum
+  </div>
+
+  <div class="kpi-strip" id="kpi-strip"></div>
+
+  <div class="sec">Mánaðarleg þróun — Yfirvinnuhlutfall BLEND 2026</div>
+  <div class="note summer" id="throun-note"></div>
+  <div class="chart-box"><canvas id="chartThroun" height="120"></canvas></div>
+
+  <div class="sec">YTD samantekt — <span data-m="langt"></span></div>
+  <div class="card-wrap">
+    <div class="card-title">BLEND heild — Yfirvinna <span data-m="timabil"></span></div>
+    <table id="ytd-tafla"></table>
+  </div>
+  <div class="fn" id="fn-svid"></div>
+</div>
+
+<!-- ══════ TAB 2 — SVIÐSEININGAR ══════ -->
+<div id="panel-svideining" class="panel">
+  <div class="note">
+    <span data-m="manudur_ar_stor"></span> · Heim. DV = mönnunarheimild 2026 (aðalviðmið) · Δv(á) = umfram viðmið m.v. heimild
+  </div>
+  <div class="cards" id="kg-cards"></div>
+
+  <div class="card-wrap">
+    <div class="card-title">Sviðseiningar — Yfirvinnugreining <span data-m="manudur_ar"></span></div>
+    <table id="kg-tafla"></table>
+  </div>
+
+  <div class="sec" style="margin-top:18px;">YTD Δv per sviðseining — <span data-m="timabil"></span></div>
+  <div class="chart-box"><canvas id="chartKg" height="120"></canvas></div>
+
+  <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — <span data-m="hiKgsTxt"></span></div>
+  <div class="chart-box"><canvas id="chartTrend3" height="120"></canvas></div>
+</div>
+
+<!-- ══════ TAB 3 — VIÐFÖNG ══════ -->
+<div id="panel-vidfong" class="panel">
+  <div class="filter-row">
+    <span style="font-size:11px;color:var(--muted);margin-right:4px;">Sía:</span>
+    <button class="fbtn active" onclick="fKg('all',this)">Öll</button>
+    <button class="fbtn" onclick="fKg('KG01',this)">KG01</button>
+    <button class="fbtn" onclick="fKg('KG02',this)">KG02</button>
+    <button class="fbtn" onclick="fKg('KG03',this)">KG03</button>
+    <button class="fbtn" onclick="fKg('KG04',this)">KG04</button>
+    <button class="fbtn" onclick="fKg('KG05',this)">KG05</button>
+    <button class="fbtn" onclick="fKg('KG06',this)">KG06</button>
+    <button class="fbtn" onclick="fKg('KG07',this)">KG07</button>
+    <button class="fbtn" onclick="fKg('over',this)">&#9888; Yfir viðmiði (<span data-m="manudur"></span>)</button>
+    <input type="text" class="sbox" id="vsearch" placeholder="Leita að viðfangi…" oninput="fSearch(this.value)">
+  </div>
+  <div id="vidfong-tables"></div>
+  <div id="vidfong-alerts" style="margin-top:12px;"></div>
+  <div class="fn">
+    Raun DV = greidd DV stöðugildi <span data-m="manudur_ar"></span> · Heim. DV = mönnunarheimild 2026 · YTD = <span data-m="stutt"></span> samtals
+    · 11131+11135 sameinuð skv. KG05-reglu · 13490 utan greiningar í KG03 · Ópersónugreinanlegt
+  </div>
+</div>
+
+<!-- ══════ TAB 4 — LEIÐBEININGAR ══════ -->
+<div id="panel-leidb" class="panel">
+  <div class="lb-grid">
+    <div>
+      <div class="sec">Uppbygging greiningar</div>
+      <div class="card-wrap">
+        <div class="card-title">Þrjú greiningarstig</div>
+        <table><thead><tr><th class="l">Flipi</th><th class="l">Innihald</th><th class="l">Notkun</th></tr></thead><tbody>
+          <tr><td class="l"><span class="bdg blu">① Sviðið</span></td><td class="l">BLEND heild — KPI-kassar, þróunargraf og YTD-tafla</td><td class="l">Heildarmat og þróun <span data-m="stutt"></span></td></tr>
+          <tr><td class="l"><span class="bdg blu">② Sviðseiningar</span></td><td class="l">KG01–KG07 — kort, samanburðartafla og graf</td><td class="l">Greina hvaða eining er umfram viðmið</td></tr>
+          <tr><td class="l"><span class="bdg blu">③ Viðföng</span></td><td class="l">Allar deildir með síu og leit</td><td class="l">Sía á KG eða &#9888; Yfir viðmiði</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="sec">Hugtök og dálkaskýringar</div>
+      <div class="card-wrap">
+        <div class="card-title">Orðalisti</div>
+        <table><thead><tr><th class="l" style="width:130px;">Hugtak</th><th class="l">Skýring</th></tr></thead><tbody>
+          <tr><td class="l"><strong>DV stöðugildi</strong></td><td class="l">Dagvinnustöðugildi — grundvöllur allra viðmiðsreikninga.</td></tr>
+          <tr><td class="l"><strong>Raun DV</strong></td><td class="l">Greidd dagvinnustöðugildi í <span data-m="manudur"></span> samkvæmt VS-kerfi.</td></tr>
+          <tr><td class="l"><strong>Heim. DV</strong></td><td class="l">Mönnunarheimild 2026 — heimiluð DV stöðugildi. Aðalviðmið Δv(á).</td></tr>
+          <tr><td class="l"><strong>YV klst.</strong></td><td class="l">Samtals yfirvinnueiningar í klukkustundum.</td></tr>
+          <tr><td class="l"><strong>YV%</strong></td><td class="l">YV stöðugildi ÷ DV stöðugildi × 100. Viðmið: 3,5%.</td></tr>
+          <tr><td class="l"><strong>Viðm.v(á)</strong></td><td class="l"><code>Heim. DV × 173,4 × 3,5% ÷ 8,0</code></td></tr>
+          <tr><td class="l"><strong>Raun v.</strong></td><td class="l"><code>YV klst. ÷ 8,0</code></td></tr>
+          <tr><td class="l"><strong>Δv(á)</strong></td><td class="l">Raun v. − Viðm.v(á). <span style="color:var(--red);font-weight:700;">Jákvætt = yfir viðmiði.</span></td></tr>
+          <tr><td class="l"><strong>YTD Δv</strong></td><td class="l">Uppsafnað Δv(á) <span data-m="timabil"></span>.</td></tr>
+          <tr><td class="l"><strong>BLEND</strong></td><td class="l">Bráða-, lyflækninga- og endurhæfingarþjónusta — KG01–KG07.</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Forsendur</div>
+      <div class="card-wrap">
+        <div class="card-title">Fastar forsendur</div>
+        <table><thead><tr><th class="l">Stærð</th><th class="l">Gildi</th></tr></thead><tbody>
+          <tr><td class="l">Yfirvinnuviðmið</td><td class="l"><strong>3,5%</strong> — LSH viðmið</td></tr>
+          <tr><td class="l">Vaktarlengd</td><td class="l"><strong>8,0 klst.</strong></td></tr>
+          <tr><td class="l">Vinnustundir/mán.</td><td class="l"><strong>173,4 klst.</strong> (8,0 × 21,675 dagar)</td></tr>
+          <tr><td class="l">Viðmiðsgrundvöllur</td><td class="l"><strong>Mönnunarheimild 2026</strong> (Heim. DV)</td></tr>
+          <tr><td class="l">KG05 klst./stg./mán.</td><td class="l"><strong>156,2</strong> (endurhæfing — launakerfisregla)</td></tr>
+          <tr><td class="l">Gögn lokað</td><td class="l" data-m="gogn_lokad"></td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="sec">Sérstök atriði</div>
+      <div class="card-wrap">
+        <div class="card-title">Fastar reglur og undantekningar</div>
+        <table><thead><tr><th class="l">Regla</th><th class="l">Skýring</th></tr></thead><tbody>
+          <tr><td class="l"><strong>11131+11135 sameinuð</strong></td><td class="l">Legudeild Minnisraskana og Líknardeild aldraðra eru alltaf í einni línu. Fjárheimild á 11131.</td></tr>
+          <tr><td class="l"><strong>13490 utan greiningar</strong></td><td class="l">Tímabundnar aukavaktir — ekki hluti af föstum rekstri KG03.</td></tr>
+          <tr><td class="l"><strong>09083 Námslæknar</strong></td><td class="l">Fáar DV stg. en miklar yfirvinnuklst. — skoða VS-skráningar.</td></tr>
+          <tr><td class="l"><strong>06060 Bráðamatsdeild</strong></td><td class="l">Ný deild — engar áætlunartölur. YV% er villandi þar sem DV er lágt.</td></tr>
+          <tr><td class="l"><strong>Sumarleyfi jún–júlí</strong></td><td class="l">DV stöðugildi hækka vegna sumarráðninga á meðan YV lækkar — þetta er eðlilegt mynstur.</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="sec">Notkun síunar (flipi ③)</div>
+      <div class="ib">
+        <ul>
+          <li>Smelltu á <strong>KG01–KG07</strong> til að sía eina sviðseiningu</li>
+          <li>Smelltu á <strong>&#9888; Yfir viðmiði</strong> til að sjá einungis deildir með Δv(á) > 0 í <span data-m="manudur"></span></li>
+          <li>Sláðu í <strong>leitarboxið</strong> til að leita að nafni deildar</li>
+          <li>Síunarhnapparnir og leitin virka saman</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="fn">
+    Gögn: VS-kerfi og stöðugildayfirlit LSH <span data-m="timabil"></span> · Ópersónugreinanlegt · Landspítali · Fjármálasvið
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const D = window.D;
+const META = D.meta;
+const MN = META.MN;
+const MNFULL = META.MNFULL;
+const NM = MN.length;          // fjöldi mánaða í gögnum
+const L = NM - 1;              // vísir síðasta mánaðar
+const MAN = META.manudur;      // t.d. 'júlí'
+const STUTT = META.stutt;      // t.d. 'jan–júlí'
+const NARROW = window.innerWidth < 600;
+const AR = NARROW ? {aspectRatio:1.3} : {};
+
+// Tímabilsháðir textar
+(function(){
+  const t = Object.assign({}, META, {
+    manudur_ar: MAN + ' ' + META.ar,
+    manudur_ar_stor: META.manudur_stor + ' ' + META.ar,
+    hiKgsTxt: META.hiKgs.join(', ')
+  });
+  document.title = 'Yfirvinnugreining BLEND — ' + META.titill;
+  document.querySelectorAll('[data-m]').forEach(el => { const v = t[el.dataset.m]; if (v != null) el.textContent = v; });
+  const tn = document.getElementById('throun-note');
+  if (META.throun_note) tn.innerHTML = META.throun_note; else tn.style.display = 'none';
+})();
+
+const VID=8, HLUT=0.035, VMIN=173.4;
+const vm = dv => Math.round(dv*VMIN*HLUT/VID*10)/10;
+const rv = yv => Math.round(yv/VID*10)/10;
+const yvpct = (yv,dv) => dv>0 ? Math.round(yv/VMIN/dv*1000)/10 : 0;
+// Íslenskt talnasnið óháð tungumálastuðningi vafrans: punktur fyrir þúsundir, komma fyrir aukastafi.
+const fmt = (n,d=0) => {
+  if (n==null) return '—';
+  const [heil, auka] = Math.abs(n).toFixed(d).split('.');
+  return (n<0?'-':'') + heil.replace(/\B(?=(\d{3})+(?!\d))/g,'.') + (auka ? ','+auka : '');
+};
+const fmtPct = n => (n>=0?'+':'')+fmt(n,1)+'%';
+const sign = n => n>=0?'+':'';
+const pctCls = p => p>10?'red':p>3.5?'warn':'grn';
+const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
+
+// ── KPI strip ────────────────────────────────────────────────────────────────
+(function(){
+  const b = D.blend;
+  const yv7 = b.yv[L], dv7 = b.dv[L], aetl = b.aetlun;
+  const ytdYv = b.yv.reduce((a,x)=>a+x,0);
+  const rv7   = rv(yv7);
+  const vm_a7 = vm(aetl);
+  const dv7_a = Math.round((rv7-vm_a7)*10)/10;
+  const yp7   = yvpct(yv7, dv7);
+  // YTD Δv: sum of monthly (rv - vm_a) for each month
+  const ytdDv = Math.round(b.yv.reduce((s,y)=>s+rv(y)-vm(aetl),0)*10)/10;
+
+  const kpis = [
+    {lbl:`Raun DV stg. (${MAN})`, val:fmt(dv7,1), sub:`Áætlun: ${fmt(aetl,1)}`, cls:''},
+    {lbl:`YV klst. ${MAN}`,       val:fmt(yv7,0), sub:`YV%: ${fmt(yp7,1)}%`,    cls: yp7>10?'red':yp7>3.5?'amb':''},
+    {lbl:`Raun vaktir ${MAN}`,    val:fmt(rv7,0), sub:`Viðmið (á): ${fmt(vm_a7,0)}`, cls:'red'},
+    {lbl:`Δv ${MAN} (á)`,          val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+' v.', sub:'Umfram mönnunarheimild', cls: dv7_a>0?'red':'grn'},
+    {lbl:`YTD Δv ${STUTT}`,     val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+' v.', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
+  ];
+  document.getElementById('kpi-strip').innerHTML = kpis.map(k=>
+    `<div class="kpi ${k.cls}"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`
+  ).join('');
+})();
+
+// ── YTD tafla ────────────────────────────────────────────────────────────────
+(function(){
+  const b = D.blend;
+  const rows = MNFULL.map((m,i)=>{
+    const yv=b.yv[i], dv=b.dv[i], aetl=b.aetlun;
+    const rv7=rv(yv), vma=vm(aetl), vmr=vm(dv);
+    const dv_a=Math.round((rv7-vma)*10)/10;
+    const yp=yvpct(yv,dv);
+    const pc = pctCls(yp);
+    const isCur = i===L;
+    return `<tr${isCur?' style="font-weight:700;"':''}>
+      <td class="l">${m}</td>
+      <td>${fmt(dv,1)}</td>
+      <td>${fmt(yv,0)}</td>
+      <td><span class="bdg ${pc}">${fmt(yp,1)}%</span></td>
+      <td>${fmt(vma,1)}</td>
+      <td>${fmt(rv7,1)}</td>
+      <td class="${dCls(dv_a)}">${sign(dv_a)+fmt(dv_a,1)}</td>
+    </tr>`;
+  });
+  // YTD total
+  const tYv=b.yv.reduce((a,x)=>a+x,0);
+  const tRv=rv(tYv);
+  const tVma=vm(b.aetlun)*NM;
+  const tDa=Math.round((tRv-tVma)*10)/10;
+  const tYp=yvpct(tYv/NM, b.dv.reduce((a,x)=>a+x)/NM);
+  rows.push(`<tr class="tot">
+    <td class="l">${META.ytd_label}</td><td>—</td>
+    <td>${fmt(tYv,0)}</td><td>${fmt(tYp,1)}%</td>
+    <td>${fmt(tVma,1)}</td><td>${fmt(tRv,1)}</td>
+    <td>${sign(tDa)+fmt(tDa,1)}</td>
+  </tr>`);
+  document.getElementById('ytd-tafla').innerHTML =
+    `<thead><tr>
+      <th class="l">Mánuður</th><th>Raun DV stg.</th><th>YV klst.</th><th>YV%</th>
+      <th>Viðm.v (á)</th><th>Raun v.</th><th>Δv (á)</th>
+    </tr></thead><tbody>${rows.join('')}</tbody>`;
+  document.getElementById('fn-svid').textContent = META.fn_svid;
+})();
+
+// ── Þróunargraf ──────────────────────────────────────────────────────────────
+window.addEventListener('load', function(){
+  const b = D.blend;
+  const yps = MN.map((_,i)=>yvpct(b.yv[i],b.dv[i]));
+  const rvs = MN.map((_,i)=>rv(b.yv[i]));
+  const colors = yps.map(p=>p>12?'#8B0000':p>10?'#C0392B':p>3.5?'#E67E22':'#0D9488');
+
+  new Chart(document.getElementById('chartThroun').getContext('2d'),{
+    type:'bar', data:{labels:MN,datasets:[
+      {label:'YV%', data:yps, backgroundColor:colors, borderRadius:3, yAxisID:'y1', order:2},
+      {label:'Raun vaktir', data:rvs, type:'line', borderColor:'#2C4A72', backgroundColor:'rgba(44,74,114,0.1)',
+       borderWidth:2, pointRadius:4, pointBackgroundColor:'#2C4A72', tension:0.3, yAxisID:'y2', order:1},
+      {label:'Viðmið 3,5%', data:Array(NM).fill(3.5), type:'line', borderColor:'#0D9488', borderWidth:2,
+       borderDash:[6,4], pointRadius:0, yAxisID:'y1', order:0},
+    ]},
+    options:{responsive:true, ...AR, plugins:{
+      legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
+      tooltip:{callbacks:{label:ctx=>ctx.dataset.yAxisID==='y1'
+        ?` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`
+        :` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} v.`}}
+    }, scales:{
+      y1:{type:'linear',position:'left',min:0,max:Math.max(18, Math.ceil(Math.max(...yps))+2),
+        title:{display:true,text:'Yfirvinnuhlutfall (%)',font:{size:11}},
+        ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'#edf1f7'}},
+      y2:{type:'linear',position:'right',min:0,max:Math.max(4500, Math.ceil(Math.max(...rvs)/500)*500+500),
+        title:{display:true,text:'Raun vaktir',font:{size:11}},
+        ticks:{callback:v=>fmt(v),font:{size:11}},grid:{drawOnChartArea:false}},
+      x:{ticks:{font:{size:12}},grid:{display:false}}
+    }}
+  });
+
+  // ── KG kort + tafla ────────────────────────────────────────────────────────
+  const cards = Object.entries(D.kg).map(([kg,d])=>{
+    const yv7=d.yv[L], dv7=d.dv[L], aetl=d.aetlun;
+    const rv7=rv(yv7), vma=vm(aetl), dv_a=Math.round((rv7-vma)*10)/10;
+    const yp=yvpct(yv7,dv7);
+    const isOver = dv_a > 0;
+    const bigCls = isOver?'red':'grn';
+    return `<div class="kgcard ${isOver?'over':'good'}" style="border-top-color:${d.color}">
+      <div class="code">${kg}</div>
+      <div class="nm">${d.name}</div>
+      <div class="big ${bigCls}" style="color:${d.color}">${sign(dv_a)+fmt(dv_a,0)} v.</div>
+      <div class="row"><span>YV%</span><span style="font-weight:700;color:${d.color}">${fmt(yp,1)}%</span></div>
+      <div class="row"><span>Raun DV</span><span>${fmt(dv7,1)}</span></div>
+      <div class="row"><span>Heim. DV</span><span>${fmt(aetl,1)}</span></div>
+    </div>`;
+  });
+  document.getElementById('kg-cards').innerHTML = cards.join('');
+
+  const bDa = rv(D.blend.yv[L])-vm(D.blend.aetlun);
+  const trows = [
+    `<tr class="tot"><td class="l">BLEND heild</td>
+      <td>${fmt(D.blend.dv[L],1)}</td><td>${fmt(D.blend.aetlun,1)}</td>
+      <td>${fmt(D.blend.yv[L],0)}</td>
+      <td><span class="bdg ${pctCls(yvpct(D.blend.yv[L],D.blend.dv[L]))}">${fmt(yvpct(D.blend.yv[L],D.blend.dv[L]),1)}%</span></td>
+      <td>${fmt(vm(D.blend.aetlun),1)}</td>
+      <td>${fmt(rv(D.blend.yv[L]),1)}</td>
+      <td class="${dCls(bDa)}">${sign(bDa)+fmt(bDa,1)}</td>
+      <td>—</td>
+    </tr>`
+  ].concat(Object.entries(D.kg).map(([kg,d])=>{
+    const yv7=d.yv[L],dv7=d.dv[L],aetl=d.aetlun;
+    const rv7=rv(yv7),vma=vm(aetl),vmr=vm(dv7);
+    const dv_a=Math.round((rv7-vma)*10)/10;
+    const dv_r=Math.round((rv7-vmr)*10)/10;
+    const yp=yvpct(yv7,dv7);
+    const pc=pctCls(yp);
+    const ytdYv=d.yv.reduce((a,x)=>a+x,0);
+    const ytdRv=rv(ytdYv);
+    const ytdVma=vm(aetl)*NM;
+    const ytdDa=Math.round((ytdRv-ytdVma)*10)/10;
+    return `<tr>
+      <td class="l">${kg} ${d.name}</td>
+      <td>${fmt(dv7,1)}</td><td>${fmt(aetl,1)}</td>
+      <td>${fmt(yv7,0)}</td>
+      <td><span class="bdg ${pc}">${fmt(yp,1)}%</span></td>
+      <td>${fmt(vma,1)}</td><td>${fmt(rv7,1)}</td>
+      <td class="${dCls(dv_a)}">${sign(dv_a)+fmt(dv_a,1)}</td>
+      <td class="${dCls(ytdDa)}">${sign(ytdDa)+fmt(ytdDa,0)}</td>
+    </tr>`;
+  }));
+  document.getElementById('kg-tafla').innerHTML =
+    `<thead><tr>
+      <th class="l">Sviðseining</th><th>Raun DV</th><th>Heim. DV</th>
+      <th>YV klst. ${MAN}</th><th>YV%</th><th>Viðm.v(á)</th><th>Raun v.</th>
+      <th><strong>Δv(á) ${MAN}</strong></th><th>YTD Δv(á)</th>
+    </tr></thead><tbody>${trows.join('')}</tbody>`;
+
+  // YTD Δv bar chart per KG
+  const kgLabels = Object.entries(D.kg).map(([k])=>k);
+  const ytdDvPerKg = Object.entries(D.kg).map(([_,d])=>{
+    return Math.round(d.yv.reduce((s,y)=>s+rv(y)-vm(d.aetlun),0)*10)/10;
+  });
+  const kgColors = Object.entries(D.kg).map(([_,d])=>d.color);
+  new Chart(document.getElementById('chartKg').getContext('2d'),{
+    type:'bar', data:{labels:kgLabels, datasets:[{
+      label:'YTD Δv vaktir '+STUTT,
+      data:ytdDvPerKg, backgroundColor:kgColors, borderRadius:3
+    }]},
+    options:{responsive:true, ...AR, plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>` ${sign(ctx.parsed.y)+fmt(ctx.parsed.y)} v.`}}
+    }, scales:{
+      y:{title:{display:true,text:'Δv vaktir (YTD)',font:{size:11}},
+         ticks:{callback:v=>(v>0?'+':'')+fmt(v),font:{size:11}},
+         grid:{color:'#edf1f7'}},
+      x:{ticks:{font:{size:12}},grid:{display:false}}
+    }}
+  });
+
+  // Þróunarlína — þær þrjár sviðseiningar sem eru með hæsta YTD YV% (D.meta.hiKgs)
+  const hiKgs = META.hiKgs.filter(k=>D.kg[k]);
+  const hiColors = hiKgs.map(k=>D.kg[k].color);
+  const hiSeries = hiKgs.map(kg=>{ const d=D.kg[kg]; return d.yv.map((y,i)=>yvpct(y,d.dv[i])); });
+  const hiMax = Math.max(0, ...hiSeries.flat());
+  new Chart(document.getElementById('chartTrend3').getContext('2d'),{
+    type:'line', data:{labels:MN, datasets:hiKgs.map((kg,ii)=>{
+      return {
+        label:kg, data:hiSeries[ii],
+        borderColor:hiColors[ii], backgroundColor:'transparent',
+        borderWidth:2.5, pointRadius:4, pointBackgroundColor:hiColors[ii], tension:0.3
+      };
+    }).concat([{
+      label:'Viðmið 3,5%', data:Array(NM).fill(3.5),
+      borderColor:'#0D9488', borderWidth:1.5, borderDash:[5,4], pointRadius:0
+    }])},
+    options:{responsive:true, ...AR, plugins:{
+      legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`}}
+    }, scales:{
+      y:{min:0,max:Math.max(30, Math.ceil(hiMax/5)*5+5), title:{display:true,text:'YV%',font:{size:11}},
+         ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'#edf1f7'}},
+      x:{ticks:{font:{size:12}},grid:{display:false}}
+    }}
+  });
+
+  // ── Viðföng ─────────────────────────────────────────────────────────────────
+  const byKg = {};
+  D.vidfong.forEach(v=>{ if(!byKg[v.kg]) byKg[v.kg]=[]; byKg[v.kg].push(v); });
+
+  const KG_NAMES_MAP = {
+    'KG01':'KG01 — Skrifstofa BLEND',
+    'KG02':'KG02 — Sérgreinar bráðaþjónustu og lyflækninga',
+    'KG03':'KG03 — Ferlideildir',
+    'KG04':'KG04 — Legudeildir',
+    'KG05':'KG05 — Endurhæfing',
+    'KG06':'KG06 — Þjálfunareiningar endurhæfingar',
+    'KG07':'KG07 — Sérgreinar lyflækninga og endurhæfingar',
+  };
+
+  let html = '';
+  for(const kg of Object.keys(D.kg)){
+    const entries = byKg[kg]||[];
+    const rows = entries.map(v=>{
+      const isOver = v.dv_a > 0;
+      const isAlert = v.yv_pct > 30 || (v.code==='09083');
+      const pc = pctCls(v.yv_pct);
+      const style = isAlert?' style="background:var(--redl);"':'';
+      return `<tr data-kg="${kg}" data-over="${isOver?1:0}"${style}>
+        <td class="l">${v.name}${isAlert?' <span class="bdg red">&#9888;</span>':''}</td>
+        <td>${fmt(v.dv_jul,1)}</td><td>${fmt(v.aetlun,1)}</td>
+        <td>${fmt(v.yv[L],0)}</td>
+        <td><span class="bdg ${pc}">${fmt(v.yv_pct,1)}%</span></td>
+        <td>${fmt(v.vma,1)}</td><td>${fmt(v.rv_jul,1)}</td>
+        <td class="${dCls(v.dv_a)}">${sign(v.dv_a)+fmt(v.dv_a,1)}</td>
+        <td>${fmt(v.ytd_yv,0)}</td>
+        <td class="${dCls(v.ytd_dv)}">${sign(v.ytd_dv)+fmt(v.ytd_dv,0)}</td>
+      </tr>`;
+    });
+    // KG subtotal
+    const sub_yv7 = entries.reduce((s,v)=>s+v.yv[L],0);
+    const sub_dv7 = entries.reduce((s,v)=>s+v.dv_jul,0);
+    const sub_aetl = entries.reduce((s,v)=>s+v.aetlun,0);
+    const sub_rv = rv(sub_yv7);
+    const sub_vma = vm(sub_aetl);
+    const sub_da = Math.round((sub_rv-sub_vma)*10)/10;
+    const sub_ytdYv = entries.reduce((s,v)=>s+v.ytd_yv,0);
+    const sub_ytdDv = entries.reduce((s,v)=>s+v.ytd_dv,0);
+    rows.push(`<tr class="sub" data-kg="${kg}" data-over="0">
+      <td class="l">${kg} samtals</td>
+      <td>${fmt(sub_dv7,1)}</td><td>${fmt(sub_aetl,1)}</td>
+      <td>${fmt(sub_yv7,0)}</td>
+      <td>${fmt(yvpct(sub_yv7,sub_dv7),1)}%</td>
+      <td>${fmt(sub_vma,1)}</td><td>${fmt(sub_rv,1)}</td>
+      <td class="${dCls(sub_da)}">${sign(sub_da)+fmt(sub_da,1)}</td>
+      <td>${fmt(sub_ytdYv,0)}</td>
+      <td class="${dCls(sub_ytdDv)}">${sign(sub_ytdDv)+fmt(sub_ytdDv,0)}</td>
+    </tr>`);
+
+    html += `<div class="card-wrap" data-kg-wrap="${kg}" style="margin-bottom:16px;">
+      <div class="card-title">${KG_NAMES_MAP[kg]}</div>
+      <table>
+        <thead><tr>
+          <th class="l">Viðfang</th>
+          <th>Raun DV</th><th>Heim. DV</th>
+          <th>YV klst. ${MAN}</th><th>YV%</th>
+          <th>Viðm.v(á)</th><th>Raun v.</th>
+          <th><strong>Δv(á) ${MAN}</strong></th>
+          <th>YTD klst.</th><th>YTD Δv</th>
+        </tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    </div>`;
+  }
+  document.getElementById('vidfong-tables').innerHTML = html;
+
+  // Alerts
+  const alerts = D.alerts || [];
+  document.getElementById('vidfong-alerts').innerHTML = alerts.map(a=>
+    `<div class="alrt ${a.cls}"><div class="alrt-ic">&#9888;</div><div>${a.txt}</div></div>`
+  ).join('');
+});
+
+function showTab(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function fKg(kg, btn){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('vsearch').value='';
+  document.querySelectorAll('[data-kg-wrap]').forEach(wrap=>{
+    const wkg=wrap.dataset.kgWrap;
+    if(kg==='all'||kg===wkg){
+      wrap.style.display='';
+      wrap.querySelectorAll('tbody tr').forEach(r=>r.style.display='');
+    } else if(kg==='over'){
+      wrap.style.display='';
+      wrap.querySelectorAll('tbody tr').forEach(r=>{
+        r.style.display=(r.dataset.over==='1'||r.classList.contains('sub'))?'':'none';
+      });
+    } else {
+      wrap.style.display='none';
+    }
+  });
+}
+
+function fSearch(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.fbtn')[0].classList.add('active');
+  document.querySelectorAll('[data-kg-wrap]').forEach(wrap=>{
+    let any=false;
+    wrap.style.display='';
+    wrap.querySelectorAll('tbody tr:not(.sub)').forEach(r=>{
+      const show=!q||r.cells[0].textContent.toLowerCase().includes(q);
+      r.style.display=show?'':'none';
+      if(show) any=true;
+    });
+    wrap.style.display=(q&&!any)?'none':'';
+  });
+}
+</script>
+</body>
+</html>
