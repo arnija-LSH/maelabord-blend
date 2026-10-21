@@ -405,7 +405,7 @@ html, body { max-width: 100%; }
 <!-- ══════════════════════════════════════════ TAB: SVIÐSEININGAR -->
 <div id="tab-svid" class="tab-content">
   <div class="insight-box" style="margin-bottom:16px">
-    Taflan sýnir heildarkostnað hvers sviðs. Dálkurinn <strong>Frávik</strong> sýnir mismun á raunkostnaði og áætlun — <strong>neikvæð tala þýðir yfir áætlun</strong>, jákvæð þýðir undir. Smelltu á nafn sviðs til að sjá einstaka deildir.
+    Taflan sýnir heildarkostnað hverrar sviðseiningar. Dálkurinn <strong>Frávik</strong> sýnir mismun á raunkostnaði og áætlun — <strong>neikvæð tala þýðir yfir áætlun</strong>, jákvæð þýðir undir. Smelltu á nafn sviðseiningar til að sjá einstaka deildir.
   </div>
   <div class="tbl-wrap" id="tbl-svid-wrap"></div>
 </div>
@@ -413,7 +413,7 @@ html, body { max-width: 100%; }
 <!-- ══════════════════════════════════════════ TAB: VIÐFÖNG -->
 <div id="tab-vidfong" class="tab-content">
   <div class="insight-box" style="margin-bottom:16px">
-    Smelltu á nafn sviðs til að sjá deildir. Kostnaður er í milljónum króna.
+    Smelltu á nafn sviðseiningar til að sjá deildir. Kostnaður er í milljónum króna.
   </div>
   <div class="tbl-wrap" id="tbl-vidfong-wrap"></div>
 </div>
@@ -943,6 +943,7 @@ function buildVidfong() {
       {lbl:'Vaktaálag (511)', d:f511},
       {lbl:'Bakvaktir (514)', d:f514},
       {lbl:'Önnur gjöld (5B)',d:od},
+      ...(t && Math.abs(t.fravik)>0.05 ? [{lbl:'Tekjur (4)', d:t}] : []),
     ];
     let tegInner = tegs.map(t2 => {
       const c = t2.d.fravik < -0.5 ? 'red' : t2.d.fravik > 0.5 ? 'grn' : '';
@@ -991,14 +992,36 @@ function buildVidfong() {
     for (const vf of D.vidfong[kg]) rows += vfRow(vf, kg);
   }
   const tb=D.blend, r=tb['0'], la=tb['5A'], od=tb['5B'], yv=tb['510'];
+  // BLEND samtals er sprengjanlegt eins og viðföngin: brúarmynd + sundurliðun eftir tegundum
+  VF_DATA['vf_blend'] = tb;
+  const blendTegs = [
+    {lbl:'Föst laun (50)',   d:tb['50']},
+    {lbl:'Yfirvinna (510)',  d:tb['510']},
+    {lbl:'Vaktaálag (511)', d:tb['511']},
+    {lbl:'Bakvaktir (514)', d:tb['514']},
+    {lbl:'Önnur gjöld (5B)',d:tb['5B']},
+    {lbl:'Tekjur (4)',      d:tb['4']},
+  ].map(t2 => {
+    const c = t2.d.fravik < -0.5 ? 'red' : t2.d.fravik > 0.5 ? 'grn' : '';
+    return `<div class="vf-teg-item"><span class="lbl">${t2.lbl}</span><span class="val ${c}">${t2.d.fravik > 0 ? '+' : ''}${fmt(t2.d.fravik,1)}</span></div>`;
+  }).join('');
   rows += `<tr class="total-row">
-    <td class="unit-name left">BLEND Samtals</td>
+    <td class="unit-name left">BLEND Samtals <button class="vf-expand-btn" onclick="toggleVfTeg('vf_blend')">+</button></td>
     <td class="right">${fmt(r.raun,0)}</td><td class="right">${fmt(r.aetlun,0)}</td>
     <td class="right">${chip(r.fravik,r.fravik_pct)}</td>
     <td class="right">${chipP(r.fravik_pct)}</td><td class="bar-cell"></td>
     <td class="right">${fmt(la.raun,0)}</td><td class="right">${chip(la.fravik,la.fravik_pct)}</td>
     <td class="right">${fmt(yv.raun,0)}</td><td class="right">${chip(yv.fravik,yv.fravik_pct)}</td>
     <td class="right">${fmt(od.raun,0)}</td><td class="right">${chip(od.fravik,od.fravik_pct)}</td>
+  </tr>
+  <tr class="vf-teg-row" id="vf_blend" style="display:none">
+    <td colspan="12">
+      <div style="padding:10px 16px 4px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Brú — frá áætlun til raun (BLEND samtals)</div>
+        <canvas id="wf-vf_blend" style="max-width:100%;display:block"></canvas>
+      </div>
+      <div class="vf-teg-inner" style="padding:0 16px 10px">${blendTegs}</div>
+    </td>
   </tr>`;
 
   const hdr = `<thead>
@@ -1088,9 +1111,10 @@ function drawMiniWaterfall(canvasId, segs, ht) {
   for(let i=1;i<segs.length-1;i++){run+=segs[i].val; levels.push(run);}
   levels.push(segs[segs.length-1].val);
 
-  const allV = levels.concat(segs.map(s=>s.val));
-  const dMin=Math.min(...allV), dMax=Math.max(...allV);
-  const pad=(dMax-dMin)*0.18 || 50;
+  // Kvarðinn miðast við þau stig sem brúin fer um (ekki frávikin sjálf), svo frávikin sjáist.
+  // Grunnsúlurnar (áætlun/raun) byrja því neðst á kvarðanum en ekki í núlli.
+  const dMin=Math.min(...levels), dMax=Math.max(...levels);
+  const pad=(dMax-dMin)*0.25 || Math.max(Math.abs(dMax)*0.05, 1);
   const Y_MIN=dMin-pad, Y_MAX=dMax+pad;
   function yp(v){return MT+CH-((v-Y_MIN)/(Y_MAX-Y_MIN))*CH;}
 
@@ -1104,7 +1128,7 @@ function drawMiniWaterfall(canvasId, segs, ht) {
   for(let i=0;i<=4;i++){
     const v=Y_MIN+(Y_MAX-Y_MIN)*i/4; const y=yp(v);
     ctx.beginPath(); ctx.moveTo(ML,y); ctx.lineTo(ML+CW,y); ctx.stroke();
-    ctx.fillText((v/1000).toFixed(1).replace('.',',')+' ma', ML-3, y+3);
+    ctx.fillText((Y_MAX-Y_MIN) < 2000 ? fmt(v,0) : (v/1000).toFixed(1).replace('.',',')+' ma', ML-3, y+3);
   }
   ctx.restore();
 
@@ -1137,11 +1161,11 @@ function drawMiniWaterfall(canvasId, segs, ht) {
     const labelY=Math.min(yTop,yBot)-4;
     if(s.type==='base'){
       ctx.fillStyle=textCol;
-      ctx.fillText((s.val/1000).toFixed(1).replace('.',',')+' ma', cx, labelY);
+      // Lítil viðföng í m.kr., stærri einingar í milljörðum
+      ctx.fillText(Math.abs(s.val) < 10000 ? fmt(s.val,0) : (s.val/1000).toFixed(1).replace('.',',')+' ma', cx, labelY);
     } else {
       ctx.fillStyle = s.type==='up'?'#B91C1C':'#166534';
-      const sign=s.val>0?'+':'';
-      ctx.fillText(sign+s.val.toFixed(1).replace('.',','), cx, labelY);
+      ctx.fillText((s.val>0?'+':'')+fmt(s.val,1), cx, labelY);
     }
     ctx.restore();
 
@@ -1180,7 +1204,7 @@ function getMiniWfSegs_kg(kg) {
   }
   if(Math.abs(resid)>0.5) segs.push(seg('Aðr. breytileg', resid));
   segs.push(seg('Önnur gjöld (5B)', f5B.fravik));
-  if(Math.abs(f4.fravik)>0.5) segs.push({lbl:'Tekjur (4)', val:-f4.fravik, type: f4.fravik>0?'up':'dn'});
+  if(Math.abs(f4.fravik)>0.5) segs.push(seg('Tekjur (4)', f4.fravik));
   segs.push({lbl:'Raun', val:sv['0'].raun, type:'base'});
   return segs;
 }
@@ -1201,6 +1225,8 @@ function getMiniWfSegs_vf(node) {
   }
   if(Math.abs(resid)>0.1) segs.push(seg('Aðr. breytileg', resid));
   if(Math.abs(f5B.fravik)>0.05) segs.push(seg('Önnur gjöld', f5B.fravik));
+  // Tekjur með svo brúin stemmi: áætlun + öll frávik = raun
+  if(f4 && Math.abs(f4.fravik)>0.05) segs.push(seg('Tekjur', f4.fravik));
   segs.push({lbl:'Raun', val:node['0'].raun, type:'base'});
   return segs;
 }
