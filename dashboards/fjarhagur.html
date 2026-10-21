@@ -188,11 +188,15 @@ body {
 .meter-row:last-child { margin-bottom: 0; }
 .meter-lbl { font-size: 12px; color: var(--text); width: 220px; flex-shrink: 0; }
 .meter-lbl span { font-size: 10px; color: var(--muted); display: block; }
-.meter-track { flex: 1; height: 14px; background: var(--lblue); border-radius: 7px; overflow: hidden; position: relative; }
-.meter-fill { height: 100%; border-radius: 7px; transition: width .4s; }
-.meter-fill.good { background: var(--grn-bar); }
-.meter-fill.warn { background: #F59E0B; }
-.meter-fill.bad  { background: var(--red-bar); }
+/* Tvístæðar súlur: 0 í miðju, innan áætlunar til hægri, yfir áætlun til vinstri */
+.meter-track { flex: 1; height: 14px; background: var(--lblue); border-radius: 7px; position: relative; }
+.meter-track::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--muted); }
+.meter-fill { position: absolute; top: 0; height: 100%; transition: width .4s; }
+.meter-fill.good { left: 50%; background: var(--grn-bar); border-radius: 0 7px 7px 0; }
+.meter-fill.bad  { right: 50%; background: var(--red-bar); border-radius: 7px 0 0 7px; }
+.meter-axis { flex: 1; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 520px) { .meter-axis .lng { display: none; } }
+.meter-axis .zero { font-weight: 700; }
 .meter-val { font-size: 12px; font-weight: 600; width: 80px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .meter-val.red { color: var(--red-txt); }
 .meter-val.grn { color: var(--grn-txt); }
@@ -660,16 +664,20 @@ function buildYfirlit() {
     { lbl:'Bakvaktir',       sub:'Greiðsla vegna bakvakta',      d:f514, isTekjur:false },
     { lbl:'Önnur gjöld',     sub:'Lyf, þjónustukaup o.fl.',       d:od,   isTekjur:false },
   ];
-  const maxRaun = Math.max(...launItems.map(x=>x.d.raun));
-  let mHtml = '<div class="meter-wrap"><div class="meter-title">Raunkostnaður á móti fjárheimild (m.kr.)</div>';
+  // Súlulengd í réttu hlutfalli við frávik; stærsta frávikið (hvoru megin sem er) fyllir hálfa breiddina.
+  const maxAbs = Math.max(...launItems.map(x=>Math.abs(x.d.fravik))) || 1;
+  let mHtml = `<div class="meter-wrap"><div class="meter-title">Frávik frá fjárheimild (m.kr.)</div>
+    <div class="meter-row"><div class="meter-lbl"></div>
+      <div class="meter-axis"><span>◀ Yfir<span class="lng"> áætlun</span></span><span class="zero">0</span><span>Innan<span class="lng"> áætlunar</span> ▶</span></div>
+      <div class="meter-val"></div></div>`;
   for (const li of launItems) {
-    const c = cls(li.d.fravik_pct, li.isTekjur);
-    const fillPct = Math.min(li.d.raun / maxRaun * 100, 100);
-    const aCls = li.d.fravik < -1 ? 'bad' : li.d.fravik > 1 ? 'good' : 'warn';
-    mHtml += `<div class="meter-row">
+    const f = li.d.fravik;
+    const fillPct = Math.abs(f) / maxAbs * 50;
+    const aCls = f < 0 ? 'bad' : 'good';
+    mHtml += `<div class="meter-row" title="Raun ${fmtM(li.d.raun)} · áætlun ${fmtM(li.d.aetlun)}">
       <div class="meter-lbl">${li.lbl}<span>${li.sub}</span></div>
       <div class="meter-track"><div class="meter-fill ${aCls}" style="width:${fillPct}%"></div></div>
-      <div class="meter-val ${c}">${sign(li.d.fravik)}${fmt(li.d.fravik,0)}</div>
+      <div class="meter-val ${f < 0 ? 'red' : 'grn'}">${sign(f)}${fmt(f,0)}</div>
     </div>`;
   }
   mHtml += '</div>';
