@@ -100,7 +100,6 @@
   ];
 
   var listi = window.MANUDIR || [];
-  var UTGAFA = Date.now().toString(36);
   var val = document.getElementById('manudur');
   var flipar = document.getElementById('flipar');
   var svaedi = document.getElementById('svaedi');
@@ -132,10 +131,11 @@
     });
     if (!s.m) { svaedi.innerHTML = '<p class="tomt">Engin gögn fundust í data/manudir.js.</p>'; return; }
     // v= tryggir að vafrinn sæki nýjustu útgáfu mælaborðs og gagna (GitHub Pages leyfir 10 mín. skyndiminni)
-    var src = 'dashboards/' + s.key + '.html?m=' + encodeURIComponent(s.m) + '&v=' + UTGAFA;
+    // Nýtt v= í hvert sinn sem skipt er um flipa/tímabil, svo ný útgáfa sjáist án þess að endurhlaða síðuna
+    var src = 'dashboards/' + s.key + '.html?m=' + encodeURIComponent(s.m) + '&v=' + Date.now().toString(36);
     var f = svaedi.querySelector('iframe');
     if (!f) { f = document.createElement('iframe'); svaedi.appendChild(f); }
-    if (f.getAttribute('src') !== src) f.setAttribute('src', src);
+    f.setAttribute('src', src);
     f.title = MAELABORD.filter(function (x) { return x.key === s.key; })[0].heiti;
     var virkur = flipar.querySelector('[aria-current]');
     if (virkur) virkur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
