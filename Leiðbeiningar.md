@@ -20,6 +20,11 @@ Tvísmelltu á `index.html`. Appið opnast í Edge eða Chrome. Veldu tímabil e
 
    Uppfærslan tekur um eina mínútu. Á meðan opnast Excel í bakgrunni.
 3. Opnaðu `index.html`. Nýi mánuðurinn birtist í tímabilsvalinu og eldri mánuðir eru áfram aðgengilegir.
+4. **Birta á netinu:** Skriftan opnar sjálf `data`-möppuna og upphleðslusíðu GitHub.
+   - Dragðu nýju mánaðarmöppuna (t.d. `2026-10`) og skrána `manudir.js` inn á síðuna.
+   - Smelltu á **Commit changes**.
+   - Eftir 1–2 mínútur er nýi mánuðurinn kominn á https://arnija-lsh.github.io/maelabord-blend/
+   - Ef þú breyttir útliti mælaborðs þarftu líka að hlaða upp viðkomandi skrá úr `dashboards`.
 
 ## Hvað er hvar
 | Mappa eða skrá | Innihald |
