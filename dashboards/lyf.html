@@ -181,7 +181,20 @@ tr:last-child td { border-bottom: none; }
 
 /* ── EXPENSE MINI BAR ── */
 .exp-mini { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px; gap: 1px; }
-.exp-mini-seg { height: 100%; }
+.exp-mini-seg { height: 100%; transition: opacity .2s; }
+
+/* Gagnvirkt val í Yfirliti: kostnaðarliður og/eða mánuður */
+#exp-breakdown .exp-row { cursor: pointer; border-radius: 5px; padding: 2px 4px; margin: -2px -4px; transition: opacity .2s, background .2s; }
+#exp-breakdown .exp-row:hover { background: var(--hover); }
+#exp-breakdown .exp-row.sel { background: var(--hover); box-shadow: inset 0 0 0 1px var(--accent); }
+.dim { opacity: .35; }
+#cv-monthly { cursor: pointer; }
+.sel-bar { display: none; align-items: center; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; font-size: 0.8rem; color: var(--muted); }
+.sel-bar.on { display: flex; }
+.sel-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+.sel-chip .dot { width: 9px; height: 9px; border-radius: 3px; }
+.sel-clear { font: inherit; font-size: 0.78rem; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 3px 4px; }
+.bar-val small { display: block; font-weight: 400; color: var(--muted); font-size: 0.68rem; }
 
 /* ── TOP DRUGS ── */
 .drug-row { display: grid; grid-template-columns: 26px 1fr 95px 85px 80px; align-items: center; gap: 0 10px; padding: 7px 11px; border-bottom: 1px solid var(--border); }
@@ -295,19 +308,20 @@ canvas { max-width: 100%; display: block; }
 <!-- ══ YFIRLIT ══════════════════════════════════════════════════════════════ -->
 <div class="view active" id="view-yfirlit">
   <div class="kpi-row" id="kpi-row"></div>
+  <div class="sel-bar" id="sel-bar"></div>
   <div class="grid2 mb16">
     <div class="panel">
-      <div class="ph"><h3>Mánaðarleg þróun <span class="t-ar"></span> — lyfjakaup</h3><span class="hint">m.kr. (535100)</span></div>
-      <div class="pb"><canvas id="cv-monthly" height="130"></canvas></div>
+      <div class="ph"><h3 id="mon-title">Mánaðarleg þróun <span class="t-ar"></span> — lyfjakaup</h3><span class="hint" id="mon-hint">m.kr. (535100)</span></div>
+      <div class="pb"><canvas id="cv-monthly" height="130" title="Smelltu á mánuð til að sjá aðeins hann"></canvas></div>
     </div>
     <div class="panel">
-      <div class="ph"><h3>Skipting kostnaðar eftir sviðseiningu</h3><span class="hint"><span class="t-stutt"></span> <span class="t-ar"></span></span></div>
+      <div class="ph"><h3>Skipting kostnaðar eftir sviðseiningu</h3><span class="hint" id="kg-hint"><span class="t-stutt"></span> <span class="t-ar"></span></span></div>
       <div class="pb" id="kg-bar-chart"></div>
     </div>
   </div>
   <div class="grid2 mb16">
     <div class="panel">
-      <div class="ph"><h3>Kostnaðarliðir — sundurliðun</h3><span class="hint">Heildarsamtals YTD</span></div>
+      <div class="ph"><h3>Kostnaðarliðir — sundurliðun</h3><span class="hint" id="exp-hint">Heildarsamtals YTD · smelltu á lið</span></div>
       <div class="pb" id="exp-breakdown"></div>
     </div>
     <div class="panel">
@@ -429,7 +443,8 @@ function showView(id, btn) {
 }
 function setKG(kg, btn) {
   curKG = kg;
-  document.querySelectorAll('.kgbtn').forEach(b => b.classList.remove('sel'));
+  // Hreinsa lit af áður völdum hnöppum, annars verður textinn ólæsilegur
+  document.querySelectorAll('.kgbtn').forEach(b => { b.classList.remove('sel'); b.style.background = ''; b.style.borderColor = ''; });
   btn.classList.add('sel');
   if (btn.dataset.kg !== 'ALL') btn.style.background = KG_COLOR[kg]||'';
   else btn.style.background = '';
@@ -469,6 +484,32 @@ function adrirLyklar(g, codes) {
   };
 }
 
+// ─── VAL Í YFIRLITI ──────────────────────────────────────────────────────
+// selExp = valinn kostnaðarliður (lykill eða 'annad'), selMonth = vísir valins mánaðar
+let selExp = null, selMonth = null;
+const EXP_CODES = ['535100','535110','535120','535800','535130','535140','597120','597210','597130','597140'];
+const EXP_COLORS = ['#2563eb','#0891b2','#059669','#64748b','#d97706','#dc2626','#9333ea','#e05a2b','#7c3aed','#be185d'];
+const EXP_NAMES = {
+  '535100':'Lyf (535100)', '535110':'Hjúkrunarvörur (535110)', '535120':'Næringarefni (535120)',
+  '535800':'Innöndunarefni (535800)', '535130':'Snyrtivörur (535130)', '535140':'Ýmsar vörur (535140)',
+  '597120':'Birgðastýring (597120)', '597210':'Lyfjablöndun (597210)', '597130':'Lyfjaskömmtun (597130)', '597140':'Umsýslugjald (597140)',
+};
+const expColor = c => c === 'annad' ? ADRIR_LITUR : EXP_COLORS[EXP_CODES.indexOf(c)];
+const expName  = c => c === 'annad' ? 'Aðrir lyklar' : EXP_NAMES[c];
+const totMonthly = g => MONTHS_IS.map((_,i) => ((g.vara_monthly||[])[i]||0) + ((g.svc_monthly||[])[i]||0));
+function expMonthly(g, c) {
+  if (c === 'annad') return totMonthly(g).map((t,i) => t - EXP_CODES.reduce((s,k) => s + ((g.expenses?.[k]?.monthly||[])[i]||0), 0));
+  return MONTHS_IS.map((_,i) => (g.expenses?.[c]?.monthly||[])[i]||0);
+}
+function expVal(g, c) {
+  if (selMonth !== null) return expMonthly(g, c)[selMonth];
+  return c === 'annad' ? adrirLyklar(g, EXP_CODES).s26 : (g.expenses?.[c]?.s26||0);
+}
+const totVal = g => selMonth !== null ? totMonthly(g)[selMonth] : (g.vara_s26||0) + (g.svc_s26||0);
+function selectExp(c)   { selExp = selExp === c ? null : c; renderYfirlit(); }
+function selectMonth(i) { selMonth = selMonth === i ? null : i; renderYfirlit(); }
+function clearSel()     { selExp = null; selMonth = null; renderYfirlit(); }
+
 // ─── YFIRLIT ─────────────────────────────────────────────────────────────
 function renderYfirlit() {
   const g = getGjald();
@@ -499,49 +540,59 @@ function renderYfirlit() {
 
   // ── KG bar chart
   if (curKG === 'ALL') {
+    // Heildarkostnaður hverrar sviðseiningar; ef kostnaðarliður er valinn lýsist sá hluti upp á súlunni
     const kgs = ['KG03','KG04','KG05','KG02'];
     const vals = kgs.map(kg => {
       const g2 = D.kg[kg]?.gjald || {};
-      return { name: D.kg[kg]?.name||kg, val: (g2.vara_s26||0)+(g2.svc_s26||0), color: KG_COLOR[kg]||'#999' };
+      return { name: D.kg[kg]?.name||kg, val: totVal(g2), part: selExp ? expVal(g2, selExp) : null, color: KG_COLOR[kg]||'#999' };
     }).filter(x => x.val > 0);
-    const mx = Math.max(...vals.map(v => v.val));
-    document.getElementById('kg-bar-chart').innerHTML = vals.map(v =>
-      `<div class="bar-row"><div class="bar-lbl">${v.name}</div>
-       <div class="bar-track"><div class="bar-fill" style="width:${v.val/mx*100}%;background:${v.color}"></div></div>
-       <div class="bar-val">${mf(v.val)}m</div></div>`
+    const mx = Math.max(...vals.map(v => v.val)) || 1;
+    document.getElementById('kg-bar-chart').innerHTML = vals.map(v => selExp
+      ? `<div class="bar-row"><div class="bar-lbl">${v.name}</div>
+         <div class="bar-track"><div class="bar-fill" style="width:${v.val/mx*100}%;background:${v.color};opacity:.22"></div>
+           <div class="bar-fill" style="position:absolute;left:0;top:0;width:${Math.max(v.part,0)/mx*100}%;background:${expColor(selExp)}"></div></div>
+         <div class="bar-val">${mf(v.part)}m<small>af ${mf(v.val)}m</small></div></div>`
+      : `<div class="bar-row"><div class="bar-lbl">${v.name}</div>
+         <div class="bar-track"><div class="bar-fill" style="width:${v.val/mx*100}%;background:${v.color}"></div></div>
+         <div class="bar-val">${mf(v.val)}m</div></div>`
     ).join('');
   } else {
     document.getElementById('kg-bar-chart').innerHTML = `<div style="color:var(--muted);font-size:.8rem;padding:20px 0">Sía eftir sviðseiningu — sjá Sviðseiningar-flipa fyrir nákvæmari sundurliðun.</div>`;
   }
 
-  // ── Expense breakdown
-  const expColors = ['#2563eb','#0891b2','#059669','#64748b','#d97706','#dc2626','#9333ea','#e05a2b','#7c3aed','#be185d'];
-  const expCodes = ['535100','535110','535120','535800','535130','535140','597120','597210','597130','597140'];
-  const expNames = {
-    '535100':'Lyf (535100)', '535110':'Hjúkrunarvörur (535110)', '535120':'Næringarefni (535120)',
-    '535800':'Innöndunarefni (535800)', '535130':'Snyrtivörur (535130)', '535140':'Ýmsar vörur (535140)',
-    '597120':'Birgðastýring (597120)', '597210':'Lyfjablöndun (597210)', '597130':'Lyfjaskömmtun (597130)', '597140':'Umsýslugjald (597140)',
-  };
-  const expItems = expCodes.map((c,i) => ({
-    code: c, name: expNames[c]||c, val: g.expenses?.[c]?.s26||0, color: expColors[i]
-  })).filter(e => e.val > 0);
-  const adrir = adrirLyklar(g, expCodes);
-  if (Math.abs(adrir.s26) >= 1000) expItems.push({ code:'annad', name:'Aðrir lyklar', val:adrir.s26, color:ADRIR_LITUR });
-  const totExp = expItems.reduce((s,e) => s+e.val, 0);
+  // ── Expense breakdown (YTD, eða valinn mánuður); smellur á lið velur hann
+  const expItems = [...EXP_CODES, 'annad'].map(c => ({ code: c, name: expName(c), val: expVal(g, c), color: expColor(c) }))
+    .filter(e => e.code === 'annad' ? Math.abs(e.val) >= 1000 : e.val > 0);
+  const totExp = expItems.reduce((s,e) => s+e.val, 0) || 1;
+  const dimCls = c => selExp && selExp !== c ? ' dim' : '';
 
   // Stacked bar
   let miniBar = '<div class="exp-mini mb12">';
-  expItems.forEach(e => { miniBar += `<div class="exp-mini-seg" style="width:${e.val/totExp*100}%;background:${e.color}"></div>`; });
+  expItems.forEach(e => { miniBar += `<div class="exp-mini-seg${dimCls(e.code)}" style="width:${Math.max(e.val,0)/totExp*100}%;background:${e.color}"></div>`; });
   miniBar += '</div>';
 
   let expHtml = miniBar + '<div class="exp-grid">';
   expItems.forEach(e => {
-    const p = (e.val/totExp*100).toFixed(1);
-    expHtml += `<div class="exp-row"><div class="exp-dot" style="background:${e.color}"></div>
+    const p = (e.val/totExp*100).toFixed(1).replace('.',',');
+    expHtml += `<div class="exp-row${selExp===e.code?' sel':''}${dimCls(e.code)}" onclick="selectExp('${e.code}')" title="Smelltu til að lýsa upp ${e.name}">
+      <div class="exp-dot" style="background:${e.color}"></div>
       <div class="exp-lbl">${e.name}</div><div class="exp-val">${mf(e.val)}m</div><div class="exp-pct">${p}%</div></div>`;
   });
   expHtml += '</div>';
   document.getElementById('exp-breakdown').innerHTML = expHtml;
+
+  // ── Fyrirsagnir og valstika
+  const manTxt = selMonth !== null ? `${MONTHS_IS[selMonth]} ${AR}` : null;
+  document.getElementById('exp-hint').textContent = manTxt ? `${manTxt} · smelltu á lið` : 'Heildarsamtals YTD · smelltu á lið';
+  document.getElementById('kg-hint').textContent = (manTxt || `${META.timabilStutt||''} ${AR}`) + (selExp ? ` · ${expName(selExp)}` : '');
+  const bar = document.getElementById('sel-bar');
+  if (selExp || selMonth !== null) {
+    bar.innerHTML = 'Valið:' +
+      (selExp ? ` <span class="sel-chip"><span class="dot" style="background:${expColor(selExp)}"></span>${expName(selExp)}</span>` : '') +
+      (manTxt ? ` <span class="sel-chip">${manTxt}</span>` : '') +
+      ` <button class="sel-clear" onclick="clearSel()">✕ Hreinsa val</button>`;
+    bar.classList.add('on');
+  } else { bar.innerHTML = ''; bar.classList.remove('on'); }
 
   // ── ATC overview
   const atcList = getAtc().slice(0,8);
@@ -578,25 +629,33 @@ function drawMonthly(g) {
 
   ctx.clearRect(0,0,W,130);
 
+  // Sjálfgefið: lyfjakaup 535100 með áætluðum samanburði við fyrra ár.
+  // Ef kostnaðarliður er valinn: sá liður í sínum lit (fyrra ár ekki til mánaðarlega).
   const lyf = g.expenses?.['535100'] || {};
-  const vals26 = lyf.monthly || MONTHS_IS.map(() => 0);
+  const vals26 = selExp ? expMonthly(g, selExp) : (lyf.monthly || MONTHS_IS.map(() => 0));
+  const colBar = selExp ? expColor(selExp) : colCur;
 
   // Estimate 2025 per-month (distribute s25 proportionally to 2026 pattern)
-  const lyf25total = lyf.s25 || 0;
+  const lyf25total = selExp ? 0 : (lyf.s25 || 0);
   const sum26 = vals26.reduce((a,b)=>a+b,0);
   const vals25 = vals26.map(v => sum26>0 ? v/sum26*lyf25total : 0);
 
-  const allV = [...vals26, ...vals25].filter(v=>v>0);
-  if (allV.length === 0) return;
-  const MAX = Math.max(...allV) * 1.15;
+  const titill = document.getElementById('mon-title');
+  if (titill) titill.textContent = `Mánaðarleg þróun ${AR} — ${selExp ? expName(selExp).replace(/\s*\(\d+\)$/, '') : 'lyfjakaup'}`;
+  const hint = document.getElementById('mon-hint');
+  if (hint) hint.textContent = `m.kr. (${selExp ? (selExp === 'annad' ? 'aðrir lyklar' : selExp) : '535100'}) · smelltu á mánuð`;
 
-  const ML=6, MR=6, MT=6, MB=28, CW=W-ML-MR;
+  const allV = [...vals26, ...vals25].filter(v=>v>0);
+  const MAX = (allV.length ? Math.max(...allV) : 1) * 1.15;
+
+  const ML=6, MR=6, MT=20, MB=28, CW=W-ML-MR;  // MT rúmar skýringuna efst svo hún skarist ekki við súlur
   const N = vals26.length;
   const GW = CW / N;
-  const BW = GW * 0.32;
+  const BW = selExp ? GW * 0.5 : GW * 0.32;
   const GAP = GW * 0.08;
+  canvas._hit = { ML, GW, N };  // fyrir smelli á mánuð
 
-  function yp(v) { return MT + (130-MT-MB) * (1 - v/MAX); }
+  function yp(v) { return MT + (130-MT-MB) * (1 - Math.max(v,0)/MAX); }
 
   // Grid lines
   ctx.strokeStyle = colGrid; ctx.lineWidth = 1;
@@ -609,41 +668,58 @@ function drawMonthly(g) {
   vals26.forEach((v,i) => {
     const x = ML + i*GW + GW/2;
     const x25 = x - BW/2 - GAP/2;
-    const x26 = x + GAP/2;
+    const x26 = selExp ? x - BW/2 : x + GAP/2;
     const y0 = 130-MB;
+    ctx.globalAlpha = (selMonth !== null && selMonth !== i) ? 0.3 : 1;
 
+    // Valinn mánuður fær ljósan bakgrunn
+    if (selMonth === i) {
+      ctx.fillStyle = dark ? '#1f3148' : '#eaf0f8';
+      ctx.fillRect(ML + i*GW + 1, MT, GW - 2, y0 - MT);
+    }
     // 2025 bar
     if (vals25[i] > 0) {
-      const h25 = y0 - yp(vals25[i]);
       ctx.fillStyle = colPrev;
-      ctx.fillRect(x25, yp(vals25[i]), BW, h25);
+      ctx.fillRect(x25, yp(vals25[i]), BW, y0 - yp(vals25[i]));
     }
     // 2026 bar
-    const h26 = y0 - yp(v);
-    ctx.fillStyle = colCur;
-    ctx.fillRect(x26, yp(v), BW, h26);
+    ctx.fillStyle = colBar;
+    ctx.fillRect(x26, yp(v), BW, y0 - yp(v));
 
     // Label
-    ctx.fillStyle = colText; ctx.font = '10px IBM Plex Sans, sans-serif';
+    ctx.fillStyle = colText; ctx.font = (selMonth === i ? '600 ' : '') + '10px IBM Plex Sans, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(MONTHS_IS[i], ML + i*GW + GW/2, 130-MB+14);
+    ctx.fillText(MONTHS_IS[i], x, 130-MB+14);
 
     // Value label
     if (v > 0) {
-      ctx.fillStyle = colCur; ctx.font = '500 9px IBM Plex Sans, sans-serif';
+      ctx.fillStyle = colBar; ctx.font = '500 9px IBM Plex Sans, sans-serif';
       ctx.fillText(mf(v,1), x26+BW/2, yp(v)-3);
     }
+    ctx.globalAlpha = 1;
   });
 
   // Legend
-  ctx.fillStyle = colPrev;
-  ctx.fillRect(W-MR-90, 8, 9, 9);
-  ctx.fillStyle = colText; ctx.font = '9px IBM Plex Sans, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(String(FYRRA_AR), W-MR-78, 17);
-  ctx.fillStyle = colCur;
+  ctx.font = '9px IBM Plex Sans, sans-serif'; ctx.textAlign = 'left';
+  if (!selExp) {
+    ctx.fillStyle = colPrev;
+    ctx.fillRect(W-MR-90, 8, 9, 9);
+    ctx.fillStyle = colText;
+    ctx.fillText(String(FYRRA_AR), W-MR-78, 17);
+  }
+  ctx.fillStyle = colBar;
   ctx.fillRect(W-MR-45, 8, 9, 9);
   ctx.fillText(String(AR), W-MR-33, 17);
 }
+
+// Smellur á mánuð í mánaðarlegu þróuninni velur/afvelur þann mánuð
+document.getElementById('cv-monthly')?.addEventListener('click', e => {
+  const c = e.currentTarget, h = c._hit;
+  if (!h) return;
+  const x = (e.clientX - c.getBoundingClientRect().left) * (c.width / c.getBoundingClientRect().width);
+  const i = Math.floor((x - h.ML) / h.GW);
+  if (i >= 0 && i < h.N) selectMonth(i);
+});
 
 // ─── SVIÐSEININGAR ────────────────────────────────────────────────────────
 function renderSvid() {

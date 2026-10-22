@@ -100,6 +100,7 @@
   ];
 
   var listi = window.MANUDIR || [];
+  var UTGAFA = Date.now().toString(36);
   var val = document.getElementById('manudur');
   var flipar = document.getElementById('flipar');
   var svaedi = document.getElementById('svaedi');
@@ -130,7 +131,8 @@
       flipar.appendChild(a);
     });
     if (!s.m) { svaedi.innerHTML = '<p class="tomt">Engin gögn fundust í data/manudir.js.</p>'; return; }
-    var src = 'dashboards/' + s.key + '.html?m=' + encodeURIComponent(s.m);
+    // v= tryggir að vafrinn sæki nýjustu útgáfu mælaborðs og gagna (GitHub Pages leyfir 10 mín. skyndiminni)
+    var src = 'dashboards/' + s.key + '.html?m=' + encodeURIComponent(s.m) + '&v=' + UTGAFA;
     var f = svaedi.querySelector('iframe');
     if (!f) { f = document.createElement('iframe'); svaedi.appendChild(f); }
     if (f.getAttribute('src') !== src) f.setAttribute('src', src);

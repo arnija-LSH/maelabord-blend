@@ -4,10 +4,12 @@
 (function () {
   var key = document.currentScript.getAttribute('data-key');
   var listi = window.MANUDIR || [];
-  var m = new URLSearchParams(location.search).get('m');
+  var q = new URLSearchParams(location.search);
+  var m = q.get('m');
+  var v = q.get('v');
   if (!listi.some(function (x) { return x.id === m; })) {
     m = listi.length ? listi[listi.length - 1].id : '';
   }
   window.VALINN_MANUDUR = m;
-  document.write('<script src="../data/' + m + '/' + key + '.js"><\/script>');
+  document.write('<script src="../data/' + m + '/' + key + '.js' + (v ? '?v=' + v : '') + '"><\/script>');
 })();
