@@ -116,7 +116,8 @@ body { font-family: 'IBM Plex Sans', system-ui, sans-serif; background: var(--bg
 .kpi.grn { border-left-color: #16a34a; }
 .kpi.red { border-left-color: #dc2626; }
 .kpi.amb { border-left-color: #d97706; }
-.kpi .lbl { font-size: 0.69rem; color: var(--muted); font-weight: 600; letter-spacing: .05em; margin-bottom: 5px; }
+/* Stærra letur og ekkert stafabil: í smáu letri líkist stórt Þ bókstafnum P */
+.kpi .lbl { font-size: 0.92rem; color: var(--text); font-weight: 600; letter-spacing: 0; margin-bottom: 5px; }
 .kpi .val { font-size: 1.55rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .kpi .sub { font-size: 0.74rem; margin-top: 5px; color: var(--muted); }
 .kpi .delta { display: inline-block; font-size: 0.72rem; font-weight: 600; margin-top: 4px; padding: 1px 6px; border-radius: 10px; }
@@ -458,6 +459,16 @@ function getTop() {
   return D.kg[curKG]?.top || [];
 }
 
+// Smályklar sem ekki eru sýndir sér (ritföng, efnavörur o.fl.): heild vöru og þjónustu mínus sýndir lyklar
+const ADRIR_LITUR = '#94a3b8';
+function adrirLyklar(g, codes) {
+  const summa = ar => codes.reduce((s,c) => s + (g.expenses?.[c]?.[ar]||0), 0);
+  return {
+    s26: (g.vara_s26||0) + (g.svc_s26||0) - summa('s26'),
+    s25: (g.vara_s25||0) + (g.svc_s25||0) - summa('s25'),
+  };
+}
+
 // ─── YFIRLIT ─────────────────────────────────────────────────────────────
 function renderYfirlit() {
   const g = getGjald();
@@ -469,13 +480,14 @@ function renderYfirlit() {
   const lyf26 = lyf.s26||0, lyf25 = lyf.s25||0;
   const p_tot = pct(tot26, tot25);
   const p_lyf = pct(lyf26, lyf25);
+  const onnur26 = vara_s26 - lyf26, onnur25 = vara_s25 - lyf25;
 
-  // ── KPI tiles
+  // ── KPI tiles — kassar 2–4 leggjast saman í heildina í fyrsta kassanum
   const kpis = [
-    { lbl: 'Heildarlyfjak. YTD', val: mf(tot26)+'m.kr.', sub:'Lyf + þjónusta', delta: p_tot, cls: p_tot>10?'red':p_tot>0?'amb':'grn' },
+    { lbl: 'Heildarlyfjak. YTD', val: mf(tot26)+'m.kr.', sub:'Lyf + önnur vörukaup + þjónusta', delta: p_tot, cls: p_tot>10?'red':p_tot>0?'amb':'grn' },
     { lbl: 'Lyfjakaup (535100)', val: mf(lyf26)+'m.kr.', sub:'Lyf eingöngu', delta: p_lyf, cls: p_lyf>10?'red':p_lyf>0?'amb':'grn' },
+    { lbl: 'Önnur vörukaup', val: mf(onnur26)+'m.kr.', sub:'Innöndunarefni, næringarefni o.fl.', delta: pct(onnur26, onnur25), cls: 'neu' },
     { lbl: 'Þjónustugjöld', val: mf(svc_s26)+'m.kr.', sub:'Birgðastýring, blöndun o.fl.', delta: pct(svc_s26, svc_s25), cls: 'neu' },
-    { lbl: 'Lyfjakaup vs '+FYRRA_AR, val: fmtPct(p_lyf), sub:'Breyting frá sama tímabili', delta: null, cls: p_lyf>10?'red':p_lyf>0?'amb':'grn' },
   ];
   document.getElementById('kpi-row').innerHTML = kpis.map(k => {
     const dc = k.delta!==null ? `<span class="delta ${k.delta>0?'up':'dn'}">${fmtPct(k.delta)}</span>` : '';
@@ -513,6 +525,8 @@ function renderYfirlit() {
   const expItems = expCodes.map((c,i) => ({
     code: c, name: expNames[c]||c, val: g.expenses?.[c]?.s26||0, color: expColors[i]
   })).filter(e => e.val > 0);
+  const adrir = adrirLyklar(g, expCodes);
+  if (Math.abs(adrir.s26) >= 1000) expItems.push({ code:'annad', name:'Aðrir lyklar', val:adrir.s26, color:ADRIR_LITUR });
   const totExp = expItems.reduce((s,e) => s+e.val, 0);
 
   // Stacked bar
@@ -697,6 +711,8 @@ function buildDetail(kg) {
   const expItems = expCodes.map((c,i) => ({
     code:c, name:expNames[c]||c, val:g.expenses?.[c]?.s26||0, val25:g.expenses?.[c]?.s25||0, color:expColors[i]
   })).filter(e=>e.val>0);
+  const adrir = adrirLyklar(g, expCodes);
+  if (Math.abs(adrir.s26) >= 1000) expItems.push({ code:'annad', name:'Aðrir lyklar', val:adrir.s26, val25:adrir.s25, color:ADRIR_LITUR });
   const totExp = expItems.reduce((s,e)=>s+e.val,0);
 
   // Stacked mini bar
