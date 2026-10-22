@@ -189,6 +189,9 @@ tr:last-child td { border-bottom: none; }
 #exp-breakdown .exp-row.sel { background: var(--hover); box-shadow: inset 0 0 0 1px var(--accent); }
 .dim { opacity: .35; }
 #cv-monthly { cursor: pointer; }
+#kg-bar-chart .bar-row, #atc-overview .atc-row { cursor: pointer; border-radius: 5px; padding: 2px 4px; margin-left: -4px; margin-right: -4px; transition: opacity .2s, background .2s; }
+#kg-bar-chart .bar-row:hover, #atc-overview .atc-row:hover { background: var(--hover); }
+#kg-bar-chart .bar-row.sel, #atc-overview .atc-row.sel { background: var(--hover); box-shadow: inset 0 0 0 1px var(--accent); }
 .sel-bar { display: none; align-items: center; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; font-size: 0.8rem; color: var(--muted); }
 .sel-bar.on { display: flex; }
 .sel-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; }
@@ -325,7 +328,7 @@ canvas { max-width: 100%; display: block; }
       <div class="pb" id="exp-breakdown"></div>
     </div>
     <div class="panel">
-      <div class="ph"><h3>ATC lyfjaflokkur 1. stigs — topp 8</h3><span class="hint"><span class="t-stutt"></span>, m.kr.</span></div>
+      <div class="ph"><h3>ATC lyfjaflokkur 1. stigs — topp 8</h3><span class="hint" id="atc-hint"><span class="t-stutt"></span>, m.kr.</span></div>
       <div class="pb" id="atc-overview"></div>
     </div>
   </div>
@@ -506,9 +509,33 @@ function expVal(g, c) {
   return c === 'annad' ? adrirLyklar(g, EXP_CODES).s26 : (g.expenses?.[c]?.s26||0);
 }
 const totVal = g => selMonth !== null ? totMonthly(g)[selMonth] : (g.vara_s26||0) + (g.svc_s26||0);
-function selectExp(c)   { selExp = selExp === c ? null : c; renderYfirlit(); }
+
+// ATC-flokkur getur verið valinn í stað kostnaðarliðar (selAtc = kóði, t.d. 'J'); aldrei bæði í einu
+let selAtc = null;
+const ATC_COLORS = ['#2563eb','#0891b2','#059669','#d97706','#7c3aed','#dc2626','#14b8a6','#9333ea'];
+function atcColorOf(c) {  // litur fylgir röð flokksins hjá BLEND svo hann haldist þótt síað sé
+  const i = (D.blend.atc||[]).slice(0,8).findIndex(a => a.code === c);
+  return i >= 0 ? ATC_COLORS[i] : '#14b8a6';
+}
+const atcOf  = (list, c) => (list||[]).find(a => a.code === c) || { s26: 0, s25: 0, monthly: [] };
+const atcVal = (list, c) => selMonth !== null ? ((atcOf(list, c).monthly||[])[selMonth]||0) : atcOf(list, c).s26;
+
+// Sameiginleg föll fyrir það sem er valið (kostnaðarliður eða ATC-flokkur)
+const harVal   = () => !!(selExp || selAtc);
+const valLitur = () => selExp ? expColor(selExp) : atcColorOf(selAtc);
+const valHeiti = () => selExp ? expName(selExp) : `ATC ${selAtc} ${ATC_IS[selAtc]||''}`.trim();
+const valManudir = (g, atcList) => selExp ? expMonthly(g, selExp) : MONTHS_IS.map((_,i) => (atcOf(atcList, selAtc).monthly||[])[i]||0);
+const valHluti   = (g, atcList) => selExp ? expVal(g, selExp) : atcVal(atcList, selAtc);
+
+function selectExp(c)   { selExp = selExp === c ? null : c; selAtc = null; renderYfirlit(); }
+function selectAtc(c)   { selAtc = selAtc === c ? null : c; selExp = null; renderYfirlit(); }
 function selectMonth(i) { selMonth = selMonth === i ? null : i; renderYfirlit(); }
-function clearSel()     { selExp = null; selMonth = null; renderYfirlit(); }
+function clearSel()     { selExp = null; selAtc = null; selMonth = null; renderYfirlit(); }
+// Smellur á sviðseiningu í grafinu virkar eins og síuhnapparnir; annar smellur fer aftur í Öll BLEND
+function pickKG(kg) {
+  const k = curKG === kg ? 'ALL' : kg;
+  setKG(k, document.querySelector(`.kgbtn[data-kg="${k}"]`));
+}
 
 // ─── YFIRLIT ─────────────────────────────────────────────────────────────
 function renderYfirlit() {
@@ -539,25 +566,25 @@ function renderYfirlit() {
   requestAnimationFrame(() => drawMonthly(g));
 
   // ── KG bar chart
-  if (curKG === 'ALL') {
-    // Heildarkostnaður hverrar sviðseiningar; ef kostnaðarliður er valinn lýsist sá hluti upp á súlunni
+  {
+    // Heildarkostnaður hverrar sviðseiningar; ef liður/ATC-flokkur er valinn lýsist sá hluti upp á súlunni.
+    // Smellur á sviðseiningu síar hin gröfin (eins og síuhnapparnir).
     const kgs = ['KG03','KG04','KG05','KG02'];
     const vals = kgs.map(kg => {
       const g2 = D.kg[kg]?.gjald || {};
-      return { name: D.kg[kg]?.name||kg, val: totVal(g2), part: selExp ? expVal(g2, selExp) : null, color: KG_COLOR[kg]||'#999' };
+      return { kg, name: D.kg[kg]?.name||kg, val: totVal(g2), part: harVal() ? valHluti(g2, D.kg[kg]?.atc) : null, color: KG_COLOR[kg]||'#999' };
     }).filter(x => x.val > 0);
     const mx = Math.max(...vals.map(v => v.val)) || 1;
-    document.getElementById('kg-bar-chart').innerHTML = vals.map(v => selExp
-      ? `<div class="bar-row"><div class="bar-lbl">${v.name}</div>
+    const rowCls = kg => curKG === kg ? ' sel' : curKG !== 'ALL' ? ' dim' : '';
+    document.getElementById('kg-bar-chart').innerHTML = vals.map(v => harVal()
+      ? `<div class="bar-row${rowCls(v.kg)}" onclick="pickKG('${v.kg}')" title="Smelltu til að sía á ${v.name}"><div class="bar-lbl">${v.name}</div>
          <div class="bar-track"><div class="bar-fill" style="width:${v.val/mx*100}%;background:${v.color};opacity:.22"></div>
-           <div class="bar-fill" style="position:absolute;left:0;top:0;width:${Math.max(v.part,0)/mx*100}%;background:${expColor(selExp)}"></div></div>
+           <div class="bar-fill" style="position:absolute;left:0;top:0;width:${Math.max(v.part,0)/mx*100}%;background:${valLitur()}"></div></div>
          <div class="bar-val">${mf(v.part)}m<small>af ${mf(v.val)}m</small></div></div>`
-      : `<div class="bar-row"><div class="bar-lbl">${v.name}</div>
+      : `<div class="bar-row${rowCls(v.kg)}" onclick="pickKG('${v.kg}')" title="Smelltu til að sía á ${v.name}"><div class="bar-lbl">${v.name}</div>
          <div class="bar-track"><div class="bar-fill" style="width:${v.val/mx*100}%;background:${v.color}"></div></div>
          <div class="bar-val">${mf(v.val)}m</div></div>`
     ).join('');
-  } else {
-    document.getElementById('kg-bar-chart').innerHTML = `<div style="color:var(--muted);font-size:.8rem;padding:20px 0">Sía eftir sviðseiningu — sjá Sviðseiningar-flipa fyrir nákvæmari sundurliðun.</div>`;
   }
 
   // ── Expense breakdown (YTD, eða valinn mánuður); smellur á lið velur hann
@@ -584,29 +611,33 @@ function renderYfirlit() {
   // ── Fyrirsagnir og valstika
   const manTxt = selMonth !== null ? `${MONTHS_IS[selMonth]} ${AR}` : null;
   document.getElementById('exp-hint').textContent = manTxt ? `${manTxt} · smelltu á lið` : 'Heildarsamtals YTD · smelltu á lið';
-  document.getElementById('kg-hint').textContent = (manTxt || `${META.timabilStutt||''} ${AR}`) + (selExp ? ` · ${expName(selExp)}` : '');
+  document.getElementById('kg-hint').textContent = (manTxt || `${META.timabilStutt||''} ${AR}`) + (harVal() ? ` · ${valHeiti()}` : ' · smelltu til að sía');
+  document.getElementById('atc-hint').textContent = `${manTxt || META.timabilStutt || ''}, m.kr. · smelltu á flokk`;
   const bar = document.getElementById('sel-bar');
-  if (selExp || selMonth !== null) {
+  if (harVal() || selMonth !== null) {
     bar.innerHTML = 'Valið:' +
-      (selExp ? ` <span class="sel-chip"><span class="dot" style="background:${expColor(selExp)}"></span>${expName(selExp)}</span>` : '') +
+      (harVal() ? ` <span class="sel-chip"><span class="dot" style="background:${valLitur()}"></span>${valHeiti()}</span>` : '') +
       (manTxt ? ` <span class="sel-chip">${manTxt}</span>` : '') +
       ` <button class="sel-clear" onclick="clearSel()">✕ Hreinsa val</button>`;
     bar.classList.add('on');
   } else { bar.innerHTML = ''; bar.classList.remove('on'); }
 
   // ── ATC overview
-  const atcList = getAtc().slice(0,8);
-  const atcMax = Math.max(...atcList.map(a => a.s26));
-  const atcColors = ['#2563eb','#0891b2','#059669','#d97706','#7c3aed','#dc2626','#14b8a6','#9333ea'];
-  document.getElementById('atc-overview').innerHTML = atcList.map((a,i) => {
-    const p = pct(a.s26, a.s25);
+  // Topp 8 eftir YTD; ef mánuður er valinn sýna súlurnar þann mánuð (enginn samanburður við fyrra ár þá)
+  const atcAll = getAtc();
+  const atcList = atcAll.slice(0,8);
+  const atcMax = Math.max(...atcList.map(a => atcVal(atcAll, a.code))) || 1;
+  document.getElementById('atc-overview').innerHTML = atcList.map(a => {
+    const v = atcVal(atcAll, a.code);
+    const p = selMonth === null ? pct(a.s26, a.s25) : null;
     const pStr = p!==null ? `<span class="${p>5?'red':p<-5?'grn':'amb'}">${fmtPct(p)}</span>` : '';
     const name = ATC_IS[a.code] || a.name.replace(/^[A-Z]\s+/,'');
-    return `<div class="atc-row">
+    const cls = selAtc === a.code ? ' sel' : selAtc ? ' dim' : '';
+    return `<div class="atc-row${cls}" onclick="selectAtc('${a.code}')" title="Smelltu til að lýsa upp ${name}">
       <div class="atc-code">${a.code}</div>
       <div class="atc-name" title="${a.name}">${name.substring(0,28)}</div>
-      <div class="atc-track"><div class="atc-bar" style="width:${a.s26/atcMax*100}%;background:${atcColors[i%atcColors.length]}"></div></div>
-      <div class="atc-val">${mf(a.s26)}m</div>
+      <div class="atc-track"><div class="atc-bar" style="width:${Math.max(v,0)/atcMax*100}%;background:${atcColorOf(a.code)}"></div></div>
+      <div class="atc-val">${mf(v)}m</div>
       <div class="atc-delta">${pStr}</div>
     </div>`;
   }).join('');
@@ -632,18 +663,20 @@ function drawMonthly(g) {
   // Sjálfgefið: lyfjakaup 535100 með áætluðum samanburði við fyrra ár.
   // Ef kostnaðarliður er valinn: sá liður í sínum lit (fyrra ár ekki til mánaðarlega).
   const lyf = g.expenses?.['535100'] || {};
-  const vals26 = selExp ? expMonthly(g, selExp) : (lyf.monthly || MONTHS_IS.map(() => 0));
-  const colBar = selExp ? expColor(selExp) : colCur;
+  const valid = harVal();
+  const vals26 = valid ? valManudir(g, getAtc()) : (lyf.monthly || MONTHS_IS.map(() => 0));
+  const colBar = valid ? valLitur() : colCur;
 
   // Estimate 2025 per-month (distribute s25 proportionally to 2026 pattern)
-  const lyf25total = selExp ? 0 : (lyf.s25 || 0);
+  const lyf25total = valid ? 0 : (lyf.s25 || 0);
   const sum26 = vals26.reduce((a,b)=>a+b,0);
   const vals25 = vals26.map(v => sum26>0 ? v/sum26*lyf25total : 0);
 
   const titill = document.getElementById('mon-title');
-  if (titill) titill.textContent = `Mánaðarleg þróun ${AR} — ${selExp ? expName(selExp).replace(/\s*\(\d+\)$/, '') : 'lyfjakaup'}`;
+  if (titill) titill.textContent = `Mánaðarleg þróun ${AR} — ${valid ? valHeiti().replace(/\s*\(\d+\)$/, '') : 'lyfjakaup'}`;
   const hint = document.getElementById('mon-hint');
-  if (hint) hint.textContent = `m.kr. (${selExp ? (selExp === 'annad' ? 'aðrir lyklar' : selExp) : '535100'}) · smelltu á mánuð`;
+  const kodi = selAtc ? 'ATC ' + selAtc : selExp === 'annad' ? 'aðrir lyklar' : (selExp || '535100');
+  if (hint) hint.textContent = `m.kr. (${kodi}) · smelltu á mánuð`;
 
   const allV = [...vals26, ...vals25].filter(v=>v>0);
   const MAX = (allV.length ? Math.max(...allV) : 1) * 1.15;
@@ -651,7 +684,7 @@ function drawMonthly(g) {
   const ML=6, MR=6, MT=20, MB=28, CW=W-ML-MR;  // MT rúmar skýringuna efst svo hún skarist ekki við súlur
   const N = vals26.length;
   const GW = CW / N;
-  const BW = selExp ? GW * 0.5 : GW * 0.32;
+  const BW = valid ? GW * 0.5 : GW * 0.32;
   const GAP = GW * 0.08;
   canvas._hit = { ML, GW, N };  // fyrir smelli á mánuð
 
@@ -668,7 +701,7 @@ function drawMonthly(g) {
   vals26.forEach((v,i) => {
     const x = ML + i*GW + GW/2;
     const x25 = x - BW/2 - GAP/2;
-    const x26 = selExp ? x - BW/2 : x + GAP/2;
+    const x26 = valid ? x - BW/2 : x + GAP/2;
     const y0 = 130-MB;
     ctx.globalAlpha = (selMonth !== null && selMonth !== i) ? 0.3 : 1;
 
@@ -701,7 +734,7 @@ function drawMonthly(g) {
 
   // Legend
   ctx.font = '9px IBM Plex Sans, sans-serif'; ctx.textAlign = 'left';
-  if (!selExp) {
+  if (!valid) {
     ctx.fillStyle = colPrev;
     ctx.fillRect(W-MR-90, 8, 9, 9);
     ctx.fillStyle = colText;
