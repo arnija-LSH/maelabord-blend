@@ -41,6 +41,15 @@ if ($texti -notmatch "id: '$Manudur'") {
   Write-Host "Bætti $heiti við mánaðalistann." -ForegroundColor Cyan
 }
 
+# Opna data-möppuna og upphleðslusíðu GitHub svo hægt sé að draga nýju gögnin beint inn.
+$github = 'https://github.com/arnija-LSH/maelabord-blend/upload/main/data'
+Write-Host ""
+Write-Host "Birting á netinu: dragðu möppuna '$Manudur' og skrána 'manudir.js' úr data-möppunni" -ForegroundColor Cyan
+Write-Host "inn á GitHub-síðuna sem opnast, og smelltu á 'Commit changes'." -ForegroundColor Cyan
+Write-Host "Síðan uppfærist eftir 1-2 mínútur: https://arnija-lsh.github.io/maelabord-blend/" -ForegroundColor Cyan
+Invoke-Item (Join-Path $rot 'data')
+Start-Process $github
+
 if ($villur.Count) {
   Write-Host "Mistókst fyrir: $($villur -join ', '). Hin mælaborðin eru uppfærð." -ForegroundColor Yellow
   exit 1
