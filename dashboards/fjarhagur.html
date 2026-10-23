@@ -142,6 +142,11 @@ body {
 .status-banner.red { background: var(--red-bg); border-left: 4px solid var(--red-bar); }
 .status-banner.grn { background: var(--grn-bg); border-left: 4px solid var(--grn-bar); }
 .status-banner .icon { font-size: 28px; line-height: 1; }
+.bridge-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--red-bar); border-radius: var(--r); padding: 14px 18px 6px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.bridge-card.grn { border-left-color: var(--grn-bar); }
+.bridge-card .headline { font-size: 16px; font-weight: 700; color: var(--red-txt); }
+.bridge-card.grn .headline { color: var(--grn-txt); }
+.bridge-card .sub { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
 .status-banner .body .headline { font-size: 18px; font-weight: 700; color: var(--red-txt); margin-bottom: 4px; }
 .status-banner.grn .body .headline { color: var(--grn-txt); }
 .status-banner .body .sub { font-size: 13px; color: var(--text); line-height: 1.6; }
@@ -584,7 +589,6 @@ function buildYfirlit() {
   // STATUS BANNER
   const isOver = rek.fravik < -5;
   const bannerCls = isOver ? 'red' : 'grn';
-  const bannerIcon = isOver ? '🔴' : '🟢';
   const bannerHead = isOver
     ? `Gjöld eru ${fmt(Math.abs(rek.fravik))} milljónum króna yfir áætlun (${fmt(Math.abs(rek.fravik_pct))}%)`
     : `Gjöld eru ${fmt(rek.fravik)} milljónum króna undir áætlun — innan fjárheimildar`;
@@ -594,14 +598,14 @@ function buildYfirlit() {
     ? `Raunkostnaður ${D.meta.timabil} er ${fmtM(rek.raun)} á móti áætluðum ${fmtM(rek.aetlun)}${drif}`
     : `Raunkostnaður ${D.meta.timabil} er ${fmtM(rek.raun)} á móti áætluðum ${fmtM(rek.aetlun)}`;
 
+  // Afkomubrú BLEND (áætlun → frávik eftir tegundum → raun) í stað textaborða
   document.getElementById('status-banner-wrap').innerHTML = `
-    <div class="status-banner ${bannerCls}">
-      <div class="icon">${bannerIcon}</div>
-      <div class="body">
-        <div class="headline">${bannerHead}</div>
-        <div class="sub">${bannerSub}</div>
-      </div>
+    <div class="bridge-card ${bannerCls}">
+      <div class="headline">${bannerHead}</div>
+      <div class="sub">${bannerSub}</div>
+      <canvas id="wf-yfirlit" style="max-width:100%;display:block"></canvas>
     </div>`;
+  requestAnimationFrame(() => drawMiniWaterfall('wf-yfirlit', getMiniWfSegs_vf(b), 240));
 
   // KPI CARDS
   const cards = [
@@ -1408,7 +1412,10 @@ function buildCharts() {
     try{drawTopVidfong();}catch(e){console.error(e);}
   },80);
 }
-window.addEventListener('resize',()=>{if(chartsBuilt){chartsBuilt=false;buildCharts();}});
+window.addEventListener('resize',()=>{
+  if(chartsBuilt){chartsBuilt=false;buildCharts();}
+  if(D && document.getElementById('wf-yfirlit')) drawMiniWaterfall('wf-yfirlit', getMiniWfSegs_vf(D.blend), 240);
+});
 
 // ── INIT ─────────────────────────────────────────────────────────────────
 if (!D) {
