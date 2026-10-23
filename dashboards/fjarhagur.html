@@ -147,6 +147,19 @@ body {
 .bridge-card .headline { font-size: 16px; font-weight: 700; color: var(--red-txt); }
 .bridge-card.grn .headline { color: var(--grn-txt); }
 .bridge-card .sub { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
+.sky-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 18px; box-shadow: var(--shadow); }
+.sky-card .sub { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.sky-tbl-wrap { overflow-x: auto; margin-top: 8px; }
+.sky-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sky-tbl th { text-align: right; font-size: 11px; font-weight: 600; color: #fff; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.sky-tbl th:nth-child(-n+2) { text-align: left; }
+.sky-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+.sky-tbl td.nr { text-align: left; color: var(--muted); font-weight: 600; width: 28px; }
+.sky-tbl td.txt { text-align: left; white-space: normal; }
+.sky-tbl td.red { color: var(--red-txt); }
+.sky-tbl td.grn { color: var(--grn-txt); }
+.sky-tbl tr.sum td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; }
+.sky-tbl tr.ouskyrt td { color: var(--muted); font-style: italic; }
 .status-banner .body .headline { font-size: 18px; font-weight: 700; color: var(--red-txt); margin-bottom: 4px; }
 .status-banner.grn .body .headline { color: var(--grn-txt); }
 .status-banner .body .sub { font-size: 13px; color: var(--text); line-height: 1.6; }
@@ -372,7 +385,7 @@ html, body { max-width: 100%; }
 }
 </style>
 <script src="../data/manudir.js"></script>
-<script src="../app/load-data.js" data-key="fjarhagur"></script>
+<script src="../app/load-data.js" data-key="fjarhagur" data-extra="skyringar"></script>
 </head>
 <body>
 
@@ -404,6 +417,8 @@ html, body { max-width: 100%; }
   <div id="dept-grid" class="dept-grid"></div>
 
   <div class="insight-box" id="insight-text"></div>
+
+  <div id="skyringar-wrap"></div>
 
 </div>
 
@@ -1235,6 +1250,56 @@ function getMiniWfSegs_vf(node) {
   return segs;
 }
 
+// Brú frá áætlun til raunar eftir uppgjörsskýringum (data/<mánuður>/skyringar.js, í krónum)
+function getSkyringSegs() {
+  const S = window.SKYRINGAR, rek = D.blend['0'];
+  const segs = [{lbl:'Áætlun', val:rek.aetlun, type:'base'}];
+  let skyrt = 0;
+  S.skyringar.forEach((s, i) => {
+    const frav = (s.tekjur + s.laun + s.annar) / 1e6;
+    skyrt += frav;
+    segs.push({lbl:'Skýring '+(i+1), val:-frav, type: frav<0 ? 'up' : 'dn'});
+  });
+  // Óútskýrt = frávik í uppgjöri − útskýrt; brúin lokast því alltaf í raun
+  const ouskyrt = rek.fravik - skyrt;
+  if (Math.abs(ouskyrt) >= 0.05) segs.push({lbl:'Óútskýrt', val:-ouskyrt, type: ouskyrt<0 ? 'up' : 'dn'});
+  segs.push({lbl:'Raun', val:rek.raun, type:'base'});
+  return {segs, ouskyrt};
+}
+
+function buildSkyringar() {
+  const wrap = document.getElementById('skyringar-wrap');
+  const S = window.SKYRINGAR;
+  if (!wrap || !S || !S.skyringar || !S.skyringar.length) return;
+  const rek = D.blend['0'];
+  const {ouskyrt} = getSkyringSegs();
+  const m = v => v / 1e6;
+  const td = v => {
+    if (Math.abs(v) < 0.05) return '<td>—</td>';
+    return `<td class="${v < 0 ? 'red' : 'grn'}">${v > 0 ? '+' : ''}${fmt(v,1)}</td>`;
+  };
+  let sT = 0, sL = 0, sA = 0;
+  const rows = S.skyringar.map((s, i) => {
+    sT += m(s.tekjur); sL += m(s.laun); sA += m(s.annar);
+    return `<tr><td class="nr">${i+1}</td><td class="txt">${s.texti}</td>${td(m(s.tekjur))}${td(m(s.laun))}${td(m(s.annar))}${td(m(s.tekjur + s.laun + s.annar))}</tr>`;
+  }).join('');
+  const ouRow = Math.abs(ouskyrt) >= 0.05
+    ? `<tr class="ouskyrt"><td class="nr"></td><td class="txt">Óútskýrt frávik</td><td></td><td></td><td></td>${td(ouskyrt)}</tr>` : '';
+  wrap.innerHTML = `
+    <div class="section-title">Uppgjörsskýringar — frá áætlun til raunar</div>
+    <div class="sky-card">
+      <div class="sub">${S.heimild || ''} · m.kr. · neikvætt = yfir áætlun</div>
+      <canvas id="wf-skyringar" style="max-width:100%;display:block"></canvas>
+      <div class="sky-tbl-wrap"><table class="sky-tbl">
+        <thead><tr><th>#</th><th>Skýring</th><th>Tekjur</th><th>Laun</th><th>Annar rekstur</th><th>Samtals</th></tr></thead>
+        <tbody>${rows}${ouRow}
+          <tr class="sum"><td class="nr"></td><td class="txt">Frávik í uppgjöri</td>${td(sT)}${td(sL)}${td(sA)}${td(rek.fravik)}</tr>
+        </tbody>
+      </table></div>
+    </div>`;
+  requestAnimationFrame(() => drawMiniWaterfall('wf-skyringar', getSkyringSegs().segs, 260));
+}
+
 // ── CHARTS ────────────────────────────────────────────────────────────────
 let chartsBuilt = false;
 const C = {
@@ -1415,6 +1480,7 @@ function buildCharts() {
 window.addEventListener('resize',()=>{
   if(chartsBuilt){chartsBuilt=false;buildCharts();}
   if(D && document.getElementById('wf-yfirlit')) drawMiniWaterfall('wf-yfirlit', getMiniWfSegs_vf(D.blend), 240);
+  if(D && document.getElementById('wf-skyringar')) drawMiniWaterfall('wf-skyringar', getSkyringSegs().segs, 260);
 });
 
 // ── INIT ─────────────────────────────────────────────────────────────────
@@ -1424,6 +1490,7 @@ if (!D) {
 } else {
   buildTextar();
   buildYfirlit();
+  buildSkyringar();
   buildSvid();
   buildVidfong();
 }
