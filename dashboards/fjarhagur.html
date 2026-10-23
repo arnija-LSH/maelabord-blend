@@ -1149,7 +1149,7 @@ function drawMiniWaterfall(canvasId, segs, ht) {
     ctx.fillStyle=fc; ctx.fillRect(bx, Math.min(yTop,yBot), barW, bh);
 
     // Connector line
-    if(prevConnY!==null && s.type!=='base'){
+    if(prevConnY!==null && (s.type!=='base' || i===n-1)){
       ctx.save();ctx.strokeStyle=mutedCol;ctx.lineWidth=1;ctx.setLineDash([3,3]);
       ctx.beginPath();ctx.moveTo(bx-slotW+barW,prevConnY);ctx.lineTo(bx,prevConnY);ctx.stroke();
       ctx.setLineDash([]);ctx.restore();
@@ -1280,7 +1280,7 @@ function drawWaterfall() {
     const bh=Math.max(Math.abs(yBot-yTop),2);
     if(s.type==='base'){ctx.save();ctx.shadowColor='rgba(31,78,121,.2)';ctx.shadowBlur=6;ctx.fillStyle=fillColor;ctx.fillRect(bx,Math.min(yTop,yBot),barW,bh);ctx.restore();}
     else{ctx.fillStyle=fillColor;ctx.fillRect(bx,Math.min(yTop,yBot),barW,bh);}
-    if(prevConnY!==null&&s.type!=='base'){
+    if(prevConnY!==null&&(s.type!=='base'||i===n-1)){
       ctx.save();ctx.strokeStyle='#9CAFC0';ctx.lineWidth=1;ctx.setLineDash([4,3]);
       ctx.beginPath();ctx.moveTo(bx-slotW+barW,prevConnY);ctx.lineTo(bx,prevConnY);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
     ctx.save();ctx.font='bold 10px IBM Plex Sans,Segoe UI';ctx.fillStyle=C.text;ctx.textAlign='center';
