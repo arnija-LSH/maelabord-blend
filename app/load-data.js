@@ -12,4 +12,9 @@
   }
   window.VALINN_MANUDUR = m;
   document.write('<script src="../data/' + m + '/' + key + '.js' + (v ? '?v=' + v : '') + '"><\/script>');
+  // Valfrjálsar aukaskrár (t.d. data-extra="skyringar"); mælaborðið þarf að þola að þær vanti fyrir suma mánuði
+  var extra = document.currentScript.getAttribute('data-extra');
+  if (extra) extra.split(',').forEach(function (k) {
+    document.write('<script src="../data/' + m + '/' + k.trim() + '.js' + (v ? '?v=' + v : '') + '"><\/script>');
+  });
 })();
