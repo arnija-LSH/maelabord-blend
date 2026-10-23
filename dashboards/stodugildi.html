@@ -238,7 +238,7 @@ function sparklineSVG(vals, w, h) {
     const y = h - ((val - mn) / range) * (h - 4) - 2;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
-  return `<svg width="${w}" height="${h}" style="display:block;"><polyline points="${pts}" fill="none" stroke="#2E75B6" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="${h}" style="display:block;"><polyline points="${pts}" fill="none" stroke="#2E75B6" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
