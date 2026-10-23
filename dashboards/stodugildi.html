@@ -111,8 +111,11 @@ td.num{text-align:right;}
 .vb-lbl{color:var(--muted);}
 .vb-val{font-weight:600;}
 .vb-divider{border:none;border-top:1px solid var(--line);margin:6px 0;}
-.sparkline-wrap{margin-top:8px;}
-.sparkline-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px;}
+.tc-plot{position:relative;margin-top:8px;}
+.tc-plot svg{position:absolute;inset:0;display:block;overflow:visible;}
+.tc-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#2E75B6;transform:translate(-50%,-50%);}
+.tc-val{position:absolute;transform:translateX(-50%);font-size:10px;font-weight:600;white-space:nowrap;}
+.tc-labels{display:grid;text-align:center;font-size:10px;color:var(--muted);margin-top:4px;}
 /* NOTE */
 .note{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:14px;}
 .section-hd{font-size:13px;font-weight:700;color:var(--lsh-blue);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
@@ -227,18 +230,24 @@ function bar(fill, color, max) {
   const w = max > 0 ? Math.min(100, fill / max * 100) : 0;
   return `<div class="kg-bar-bg"><div class="kg-bar-fill" style="width:${w.toFixed(1)}%;background:${color};"></div></div>`;
 }
-function sparklineSVG(vals, w, h) {
-  w = w || 120; h = h || 28;
-  const v = vals.filter(x => x !== null && !isNaN(x));
-  if (v.length < 2) return '';
-  const mn = Math.min(...v), mx = Math.max(...v);
+// Línurit með gildi yfir hverjum punkti og mánaðarheiti undir; punktar miðjaðir í hverjum dálki
+function trendChart(vals, labels) {
+  const n = vals.length;
+  if (n < 2) return '';
+  const mn = Math.min(...vals), mx = Math.max(...vals);
   const range = mx - mn || 1;
-  const pts = vals.map((val, i) => {
-    const x = (i / (vals.length - 1)) * w;
-    const y = h - ((val - mn) / range) * (h - 4) - 2;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="${h}" style="display:block;"><polyline points="${pts}" fill="none" stroke="#2E75B6" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+  const top = 20, plotH = 60, h = top + plotH + 6;
+  const xs = vals.map((_, i) => (i + 0.5) / n * 100);
+  const ys = vals.map(v => top + (1 - (v - mn) / range) * plotH);
+  const pts = xs.map((x, i) => `${x.toFixed(2)},${ys[i].toFixed(1)}`).join(' ');
+  const marks = vals.map((v, i) => `
+    <span class="tc-dot" style="left:${xs[i].toFixed(2)}%;top:${ys[i].toFixed(1)}px;"></span>
+    <span class="tc-val" style="left:${xs[i].toFixed(2)}%;top:${(ys[i] - 17).toFixed(1)}px;">${isl(v,2)}</span>`).join('');
+  return `<div class="tc-plot" style="height:${h}px;">
+      <svg viewBox="0 0 100 ${h}" preserveAspectRatio="none" width="100%" height="${h}"><polyline points="${pts}" fill="none" stroke="#2E75B6" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+      ${marks}
+    </div>
+    <div class="tc-labels" style="grid-template-columns:repeat(${n},1fr);">${labels.map(l => `<span>${l}</span>`).join('')}</div>`;
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
@@ -461,13 +470,8 @@ function buildVid() {
     const fCls = fravClsV(fp);
     const yvStr = yvMed !== null ? pct(yvMed,1) : '—';
 
-    // Monthly values for sparkline
+    // Monthly values for trend chart
     const monthVals = MONTHS.map(m => vf[m] || 0);
-    const spark = sparklineSVG(monthVals, 140, 30);
-    const monthRows = MONTHS.map((m,i) => {
-      const vfYvM = yv ? yv[m] : 0;
-      return `<div class="vb-row"><span class="vb-lbl">${ML[i]}</span><span class="vb-val">${isl(vf[m]||0,2)} stg.</span></div>`;
-    }).join('');
 
     cards += `
       <div class="vid-card" id="vfc-${vf.code}" data-kg="${vf.kg}" data-name="${vf.name.toLowerCase()}">
@@ -498,11 +502,7 @@ function buildVid() {
             </div>
             <div class="vid-box">
               <h4>Mánaðarleg þróun (${META.timabil})</h4>
-              ${monthRows}
-              <div class="sparkline-wrap">${spark}</div>
-              <div class="sparkline-labels">
-                ${ML.map(l => `<span>${l}</span>`).join('')}
-              </div>
+              ${trendChart(monthVals, ML.slice(0, MONTHS.length))}
             </div>
           </div>
         </div>
