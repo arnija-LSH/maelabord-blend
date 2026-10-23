@@ -1104,6 +1104,16 @@ function isDark() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
+// Teiknar í fullri upplausn skjás (devicePixelRatio) svo myndir séu skarpar við skölun í Windows
+function hiDpi(canvas, W, H) {
+  const r = window.devicePixelRatio || 1;
+  canvas.width = Math.round(W * r); canvas.height = Math.round(H * r);
+  canvas.style.width = W + 'px';   // hæð fylgir hlutfalli, líka ef max-width þrengir
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  return ctx;
+}
+
 function drawMiniWaterfall(canvasId, segs, ht) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !segs || segs.length < 2) return;
@@ -1118,9 +1128,10 @@ function drawMiniWaterfall(canvasId, segs, ht) {
   const redFill  = '#DC2626';
   const grnFill  = '#16A34A';
 
-  const W = (canvas.parentElement.clientWidth || 520);
-  canvas.width = W; canvas.height = ht;
-  const ctx = canvas.getContext('2d');
+  // Breidd innan padding svo myndin sé ekki þjöppuð saman (sem gerir hana loðna)
+  const par = canvas.parentElement, ps = getComputedStyle(par);
+  const W = Math.floor((par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 520);
+  const ctx = hiDpi(canvas, W, ht);
   ctx.clearRect(0,0,W,ht);
   const ML=62, MR=12, MT=26, MB=58, CW=W-ML-MR, CH=ht-MT-MB;
 
@@ -1314,8 +1325,8 @@ function px(el) { return (el.parentElement.clientWidth||600) - 40; }
 
 function drawWaterfall() {
   const canvas = document.getElementById('cv-waterfall');
-  const W = px(canvas); canvas.width = W; canvas.height = 310;
-  const ctx = canvas.getContext('2d');
+  const W = px(canvas);
+  const ctx = hiDpi(canvas, W, 310);
   ctx.clearRect(0,0,W,310);
   const ML=86,MR=22,MT=36,MB=64,CW=W-ML-MR,CH=310-MT-MB;
   const segs=[
@@ -1371,8 +1382,8 @@ function drawWaterfall() {
 
 function drawRaunAetlun() {
   const canvas=document.getElementById('cv-raun-aetlun');
-  const W=px(canvas);canvas.width=W;canvas.height=280;
-  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,280);
+  const W=px(canvas);
+  const ctx=hiDpi(canvas,W,280);ctx.clearRect(0,0,W,280);
   const ML=116,MR=20,MT=12,MB=30,CW=W-ML-MR,CH=280-MT-MB;
   const kgs=['KG01','KG02','KG03','KG04','KG05','KG06','KG07'];
   const labels={KG01:'KG01 Skrifstofa',KG02:'KG02 Sérgreinar bráð.',KG03:'KG03 Ferlideildir',KG04:'KG04 Legudeildar',KG05:'KG05 Endurhæfing',KG06:'KG06 Þjálfun',KG07:'KG07 Sérgreinar lyfl.'};
@@ -1394,8 +1405,8 @@ function drawRaunAetlun() {
 
 function drawFravik() {
   const canvas=document.getElementById('cv-fravik');
-  const W=px(canvas);canvas.width=W;canvas.height=280;
-  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,280);
+  const W=px(canvas);
+  const ctx=hiDpi(canvas,W,280);ctx.clearRect(0,0,W,280);
   const ML=120,MR=80,MT=12,MB=28,CW=W-ML-MR,CH=280-MT-MB;
   const kgs=['KG01','KG02','KG03','KG04','KG05','KG06','KG07'];
   const maxAbs=Math.max(...kgs.map(k=>Math.abs(D.svidseining[k]['0'].fravik)));
@@ -1421,8 +1432,8 @@ function drawFravik() {
 
 function drawLaun() {
   const canvas=document.getElementById('cv-laun');
-  const W=px(canvas);canvas.width=W;canvas.height=280;
-  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,280);
+  const W=px(canvas);
+  const ctx=hiDpi(canvas,W,280);ctx.clearRect(0,0,W,280);
   const ML=76,MR=20,MT=30,MB=60,CW=W-ML-MR,CH=280-MT-MB;
   const cats=[{key:'50',short:'Föst laun'},{key:'510',short:'Yfirvinna'},{key:'511',short:'Vaktaálag'},{key:'514',short:'Bakvaktir'}];
   const n=cats.length;
@@ -1444,8 +1455,8 @@ function drawLaun() {
 
 function drawTopVidfong() {
   const canvas=document.getElementById('cv-top-vidfong');
-  const W=px(canvas);canvas.width=W;canvas.height=300;
-  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,300);
+  const W=px(canvas);
+  const ctx=hiDpi(canvas,W,300);ctx.clearRect(0,0,W,300);
   const all=[];
   for(const kg of Object.keys(D.vidfong))for(const vf of D.vidfong[kg])all.push({label:vf.label,kg,fravik:vf['0'].fravik,raun:vf['0'].raun});
   all.sort((a,b)=>a.fravik-b.fravik);

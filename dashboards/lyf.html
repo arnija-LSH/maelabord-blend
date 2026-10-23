@@ -643,14 +643,28 @@ function renderYfirlit() {
   }).join('');
 }
 
+// Teiknar í fullri upplausn skjás (devicePixelRatio) svo myndir séu skarpar við skölun í Windows
+function hiDpi(canvas, W, H) {
+  const r = window.devicePixelRatio || 1;
+  canvas.width = Math.round(W * r); canvas.height = Math.round(H * r);
+  canvas.style.width = W + 'px';   // hæð fylgir hlutfalli, líka ef max-width þrengir
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  return ctx;
+}
+// Breidd innan padding svo myndin sé ekki þjöppuð saman (sem gerir hana loðna)
+function innriBreidd(el) {
+  const s = getComputedStyle(el);
+  return Math.floor(el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight));
+}
+
 // ─── MONTHLY CANVAS ───────────────────────────────────────────────────────
 function drawMonthly(g) {
   g = g || getGjald();
   const canvas = document.getElementById('cv-monthly');
   if (!canvas) return;
-  const W = canvas.parentElement.clientWidth || 480;
-  canvas.width = W; canvas.height = 130;
-  const ctx = canvas.getContext('2d');
+  const W = innriBreidd(canvas.parentElement) || 480;
+  const ctx = hiDpi(canvas, W, 130);
   const dark = isDark();
   const colCur = dark ? '#4fa3d8' : '#2563eb';
   const colPrev = dark ? '#374d66' : '#cbd5e1';
@@ -896,9 +910,8 @@ function drawKGMonthly(kg) {
   const lyf = g.expenses?.['535100'] || {};
   const vals26 = lyf.monthly || MONTHS_IS.map(() => 0);
 
-  const W = canvas.parentElement.clientWidth || 480;
-  canvas.width = W; canvas.height = 100;
-  const ctx = canvas.getContext('2d');
+  const W = innriBreidd(canvas.parentElement) || 480;
+  const ctx = hiDpi(canvas, W, 100);
   const dark = isDark();
   const colCur = KG_COLOR[kg] || '#2563eb';
   const colPrev = dark ? '#374d66' : '#cbd5e1';
