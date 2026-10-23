@@ -116,6 +116,15 @@ td.num{text-align:right;}
 .tc-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#2E75B6;transform:translate(-50%,-50%);}
 .tc-val{position:absolute;transform:translateX(-50%);font-size:10px;font-weight:600;white-space:nowrap;}
 .tc-labels{display:grid;text-align:center;font-size:10px;color:var(--muted);margin-top:4px;}
+.st-box{margin-top:12px;}
+.st-wrap{overflow-x:auto;background:white;border:1px solid var(--line);border-radius:6px;}
+.st-table{font-size:11.5px;}
+.st-table thead th{padding:6px 8px;font-size:10.5px;}
+.st-table td{padding:5px 8px;white-space:nowrap;}
+.st-table td.st-avg{background:#FFF9DB;font-weight:600;}
+.st-table td.st-aatl{background:#E3F4E1;font-weight:600;}
+.st-table th.st-sep,.st-table td.st-sep{border-left:2px solid var(--line);}
+.st-table tr.st-total td{background:var(--lsh-pale);font-weight:700;border-top:2px solid var(--line);}
 /* NOTE */
 .note{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:14px;}
 .section-hd{font-size:13px;font-weight:700;color:var(--lsh-blue);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
@@ -229,6 +238,45 @@ function yvMetricCls(v) {
 function bar(fill, color, max) {
   const w = max > 0 ? Math.min(100, fill / max * 100) : 0;
   return `<div class="kg-bar-bg"><div class="kg-bar-fill" style="width:${w.toFixed(1)}%;background:${color};"></div></div>`;
+}
+// Stöðugildi viðfangs eftir stéttarfélögum: mánuðir, meðaltöl, mismunur ára og frávik frá áætlun
+function stettTafla(vf, months, labels) {
+  if (!vf.stett || !vf.stett.length) return '';
+  const pctOrDash = (x, base) => base ? pct(x,1) : '—';
+  const row = (r, heiti, cls) => {
+    const fc = r.aatl ? fravCls(r.frav_pct) : '';
+    return `<tr class="${cls || ''}">
+      <td>${heiti}</td>
+      ${months.map(m => `<td class="num">${isl(r[m] || 0,1)}</td>`).join('')}
+      <td class="num st-avg">${isl(r.medalt26,1)}</td>
+      <td class="num st-sep">${isl(r.medalt25,1)}</td>
+      <td class="num">${isl(r.mism,1)}</td>
+      <td class="num">${pctOrDash(r.mism_pct, r.medalt25)}</td>
+      <td class="num st-sep st-aatl">${isl(r.aatl,1)}</td>
+      <td class="num ${fc}">${isl(r.frav,1)}</td>
+      <td class="num ${fc}">${pctOrDash(r.frav_pct, r.aatl)}</td>
+    </tr>`;
+  };
+  return `<div class="vid-box st-box">
+      <h4>Stöðugildi eftir stéttarfélögum (${META.timabil})</h4>
+      <div class="st-wrap"><table class="st-table">
+        <thead><tr>
+          <th>Stéttarfélag</th>
+          ${labels.map(l => `<th class="num">${l}</th>`).join('')}
+          <th class="num">Meðaltal ${AR}</th>
+          <th class="num st-sep">Meðaltal ${AR_FYRRA}</th>
+          <th class="num">Mismunur ára</th>
+          <th class="num">Mismunur %</th>
+          <th class="num st-sep">Áætlun ${AR}</th>
+          <th class="num">Frávik</th>
+          <th class="num">Frávik %</th>
+        </tr></thead>
+        <tbody>
+          ${vf.stett.map(s => row(s, s.name)).join('')}
+          ${row(vf, 'Stöðugildi', 'st-total')}
+        </tbody>
+      </table></div>
+    </div>`;
 }
 // Línurit með gildi yfir hverjum punkti og mánaðarheiti undir; punktar miðjaðir í hverjum dálki
 function trendChart(vals, labels) {
@@ -505,6 +553,7 @@ function buildVid() {
               ${trendChart(monthVals, ML.slice(0, MONTHS.length))}
             </div>
           </div>
+          ${stettTafla(vf, MONTHS, ML.slice(0, MONTHS.length))}
         </div>
       </div>`;
   }
