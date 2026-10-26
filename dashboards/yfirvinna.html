@@ -599,11 +599,12 @@ window.addEventListener('load', function(){
   }
   document.getElementById('vidfong-tables').innerHTML = html;
 
-  // Alerts
+  // Alerts — sviðseiningin er lesin úr textanum, t.d. "(KG03)"; athugasemdir án hennar eiga við BLEND í heild
   const alerts = D.alerts || [];
-  document.getElementById('vidfong-alerts').innerHTML = alerts.map(a=>
-    `<div class="alrt ${a.cls}"><div class="alrt-ic">&#9888;</div><div>${a.txt}</div></div>`
-  ).join('');
+  document.getElementById('vidfong-alerts').innerHTML = alerts.map(a=>{
+    const m = a.txt.match(/\((KG\d{2})\)/);
+    return `<div class="alrt ${a.cls}" data-alert-kg="${m ? m[1] : 'BLEND'}"><div class="alrt-ic">&#9888;</div><div>${a.txt}</div></div>`;
+  }).join('');
 });
 
 function showTab(id){
@@ -631,12 +632,22 @@ function fKg(kg, btn){
       wrap.style.display='none';
     }
   });
+  fAlerts(kg);
+}
+
+// Athugasemdir fylgja síunni: valin sviðseining sýnir bara sínar athugasemdir
+function fAlerts(kg){
+  const einKg = /^KG\d{2}$/.test(kg);
+  document.querySelectorAll('[data-alert-kg]').forEach(a=>{
+    a.style.display = (!einKg || a.dataset.alertKg===kg) ? '' : 'none';
+  });
 }
 
 function fSearch(q){
   q=q.toLowerCase();
   document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.fbtn')[0].classList.add('active');
+  fAlerts('all');
   document.querySelectorAll('[data-kg-wrap]').forEach(wrap=>{
     let any=false;
     wrap.style.display='';
