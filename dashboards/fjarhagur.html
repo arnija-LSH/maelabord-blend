@@ -212,7 +212,7 @@ body {
 .meter-fill.good { left: 50%; background: var(--grn-bar); border-radius: 0 7px 7px 0; }
 .meter-fill.bad  { right: 50%; background: var(--red-bar); border-radius: 7px 0 0 7px; }
 .meter-axis { flex: 1; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); white-space: nowrap; }
-@media (max-width: 520px) { .meter-axis .lng { display: none; } }
+@media (max-width: 520px) { .meter-axis .lng, .ap-teg-axis .lng { display: none; } }
 .meter-axis .zero { font-weight: 700; }
 .meter-val { font-size: 12px; font-weight: 600; width: 80px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .meter-val.red { color: var(--red-txt); }
@@ -224,12 +224,20 @@ body {
 .ap-row.open { display: table-row; }
 .ap-row td { padding: 0; border-top: none; }
 .ap-wrap { background: var(--lblue); border-bottom: 2px solid var(--border); padding: 16px 20px 14px; }
+/* Útvíkkaðar línur (greining, brúarmyndir) haldast innan sýnilega svæðisins þótt taflan sé breiðari og skruni */
+.ap-row > td > div, .vf-teg-row > td > div { position: sticky; left: 0; box-sizing: border-box; }
 .ap-section-title { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; margin-top: 14px; }
 .ap-section-title:first-child { margin-top: 0; }
 .ap-teg-grid { display: grid; grid-template-columns: 170px 1fr 120px; gap: 5px 10px; align-items: center; }
 .ap-teg-lbl { font-size: 11.5px; color: var(--text); }
-.ap-teg-track { height: 9px; background: var(--border); border-radius: 5px; overflow: hidden; }
-.ap-teg-fill { height: 100%; border-radius: 5px; }
+/* Tvístæðar súlur eins og á Yfirliti: 0 í miðju, innan áætlunar til hægri, yfir áætlun til vinstri */
+.ap-teg-track { height: 9px; background: var(--border); border-radius: 5px; position: relative; }
+.ap-teg-track::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--muted); }
+.ap-teg-fill { position: absolute; top: 0; height: 100%; }
+.ap-teg-fill.pos { left: 50%; border-radius: 0 5px 5px 0; }
+.ap-teg-fill.neg { right: 50%; border-radius: 5px 0 0 5px; }
+.ap-teg-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.ap-teg-axis .zero { font-weight: 700; }
 .ap-teg-fill.red { background: var(--red-bar); }
 .ap-teg-fill.grn { background: var(--grn-bar); }
 .ap-teg-fill.neu { background: #F59E0B; }
@@ -821,15 +829,17 @@ function buildSvidAnalysis(kg) {
     { code:'514', lbl:'Bakvaktir (514)' },
     { code:'5B',  lbl:'Önnur gjöld (5B)' },
   ];
-  const maxRaun = Math.max(...tegs.map(t => Math.abs(sv[t.code].raun)));
-  let tegHtml = '<div class="ap-section-title">Sundurliðun kostnaðarliða</div><div class="ap-teg-grid">';
+  // Súlulengd í réttu hlutfalli við frávik; stærsta frávikið fyllir hálfa breiddina
+  const maxAbs = Math.max(...tegs.map(t => Math.abs(sv[t.code].fravik))) || 1;
+  let tegHtml = `<div class="ap-section-title">Frávik kostnaðarliða frá áætlun (m.kr.)</div><div class="ap-teg-grid">
+    <div></div><div class="ap-teg-axis"><span>◀ Yfir<span class="lng"> áætlun</span></span><span class="zero">0</span><span>Innan<span class="lng"> áætlunar</span> ▶</span></div><div></div>`;
   for (const t of tegs) {
     const d = sv[t.code];
-    const c = d.fravik < -1 ? 'red' : d.fravik > 1 ? 'grn' : 'neu';
-    const fill = maxRaun > 0 ? Math.min(Math.abs(d.raun)/maxRaun*100, 100) : 0;
+    const c = d.fravik < 0 ? 'red' : 'grn';
+    const fill = Math.abs(d.fravik) / maxAbs * 50;
     const sign = d.fravik > 0 ? '+' : '';
     tegHtml += `<div class="ap-teg-lbl">${t.lbl}</div>
-      <div class="ap-teg-track"><div class="ap-teg-fill ${c}" style="width:${fill}%"></div></div>
+      <div class="ap-teg-track" title="Raun ${fmtM(d.raun)} · áætlun ${fmtM(d.aetlun)}"><div class="ap-teg-fill ${c} ${d.fravik < 0 ? 'neg' : 'pos'}" style="width:${fill}%"></div></div>
       <div class="ap-teg-val ${c}">${sign}${fmt(d.fravik,1)} m.kr.</div>`;
   }
   tegHtml += '</div>';
@@ -862,6 +872,16 @@ function buildSvidAnalysis(kg) {
   return `<div class="ap-wrap">${canvasHtml}${tegHtml}${vfHtml}</div>`;
 }
 
+// Stillir breidd útvíkkaðrar línu á sýnilega breidd töflurammans
+function fitToWrap(row) {
+  const wrap = row.closest('.tbl-wrap');
+  if (!wrap) return;
+  row.querySelectorAll(':scope > td > div').forEach(d => { d.style.width = wrap.clientWidth + 'px'; });
+}
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.ap-row.open, .vf-teg-row[style*="table-row"]').forEach(fitToWrap);
+});
+
 function toggleSvidAP(kg) {
   const row = document.getElementById('ap-row-'+kg);
   if (!row) return;
@@ -877,9 +897,10 @@ function toggleSvidAP(kg) {
       row.dataset.built = '1';
     }
     row.classList.add('open');
+    fitToWrap(row);
     const btn = document.getElementById('ap-btn-'+kg);
     if (btn) btn.textContent = '📊 Loka';
-    requestAnimationFrame(() => drawMiniWaterfall('wf-svid-'+kg, getMiniWfSegs_kg(kg), 210));
+    drawMiniWaterfall('wf-svid-'+kg, getMiniWfSegs_kg(kg), 210);  // strax, svo breiddin sé mæld á meðan línan er sýnileg
   }
 }
 
@@ -1100,9 +1121,10 @@ function toggleVfTeg(uid) {
   const btn = row.previousElementSibling && row.previousElementSibling.querySelector('.vf-expand-btn');
   if (row.style.display === 'none' || row.style.display === '') {
     row.style.display = 'table-row';
+    fitToWrap(row);
     if (btn) btn.textContent = '−';
     if (!row.dataset.wfBuilt && VF_DATA[uid]) {
-      requestAnimationFrame(() => drawMiniWaterfall('wf-'+uid, getMiniWfSegs_vf(VF_DATA[uid]), 185));
+      drawMiniWaterfall('wf-'+uid, getMiniWfSegs_vf(VF_DATA[uid]), 185);
       row.dataset.wfBuilt = '1';
     }
   } else {
