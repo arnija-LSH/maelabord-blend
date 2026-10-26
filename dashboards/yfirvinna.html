@@ -557,16 +557,23 @@ window.addEventListener('load', function(){
     'KG07':'KG07 — Sérgreinar lyflækninga og endurhæfingar',
   };
 
+  // Viðföng sem eiga athugasemd (númer fremst í texta hennar) eru merkt í töflunni í sama lit
+  const alertCls = {};
+  (D.alerts||[]).forEach(a=>{
+    const m = a.txt.replace(/<[^>]+>/g,'').match(/^\s*(\d{5}(?:\+\d{5})?)\s/);
+    if (m && a.cls!=='grn' && alertCls[m[1]]!=='red') alertCls[m[1]] = a.cls;
+  });
+
   let html = '';
   for(const kg of Object.keys(D.kg)){
     const entries = byKg[kg]||[];
     const rows = entries.map(v=>{
       const isOver = v.dv_a > 0;
-      const isAlert = v.yv_pct > 30 || (v.code==='09083');
+      const aCls = (v.yv_pct > 30 || v.code==='09083') ? 'red' : alertCls[v.code];
       const pc = pctCls(v.yv_pct);
-      const style = isAlert?' style="background:var(--redl);"':'';
+      const style = aCls==='red' ? ' style="background:var(--redl);"' : aCls==='warn' ? ' style="background:var(--warnl);"' : '';
       return `<tr data-kg="${kg}" data-over="${isOver?1:0}"${style}>
-        <td class="l">${v.name}${isAlert?' <span class="bdg red">&#9888;</span>':''}</td>
+        <td class="l">${v.name}${aCls?` <span class="bdg ${aCls}">&#9888;</span>`:''}</td>
         <td>${fmt(v.dv_jul,1)}</td><td>${fmt(v.aetlun,1)}</td>
         <td>${fmt(v.yv[L],0)}</td>
         <td>${fmt(ystg(v.yv[L]),1)}</td>
