@@ -165,11 +165,13 @@ Write-Host "Veikindi:           $($vkSkra.Name)"
 
 # ── Dálkar í dagvinnustöðugildablöðum ─────────────────────────────────────────
 function Haus-Dalkar($a, [int]$r) {
-  $h = [ordered]@{ manudir = [ordered]@{}; ar = $null; medalt = $null; medalt_fyrra = $null; aatl = $null; frav = $null; frav_pct = $null }
+  $h = [ordered]@{ manudir = [ordered]@{}; ar = $null; medalt = $null; medalt_fyrra = $null; mism = $null; mism_pct = $null; aatl = $null; frav = $null; frav_pct = $null }
   for ($c = 1; $c -le (Cols $a); $c++) {
     $t = Txt (Cell $a $r $c)
     if ($t -match '^(0[1-9]|1[0-2])$') { $h.manudir[$t] = $c }
     elseif ($t -match '^Meðaltal (\d{4})$') { if ($null -eq $h.medalt) { $h.medalt = $c; $h.ar = [int]$Matches[1] } else { $h.medalt_fyrra = $c } }
+    elseif ($t -eq 'Mismunur ára') { $h.mism = $c }
+    elseif ($t -eq 'Mismunur ára %') { $h.mism_pct = $c }
     elseif ($t -match '^Áætlun \d{4}$') { $h.aatl = $c }
     elseif ($t -eq 'Frávik frá áætlun') { $h.frav = $c }
     elseif ($t -eq 'Frávik frá áætlun %') { $h.frav_pct = $c }
@@ -187,9 +189,9 @@ function Fyrsti-Textadalkur($a) {
 
 # Les línu: skilar hráum tölum (óslétt)
 function Lesa-Lina($a, [int]$r, $h) {
-  $o = [ordered]@{ man = [ordered]@{}; medalt = 0.0; medalt_fyrra = 0.0; aatl = 0.0; frav = 0.0; frav_pct = 0.0; hefur_tolur = $false }
+  $o = [ordered]@{ man = [ordered]@{}; medalt = 0.0; medalt_fyrra = 0.0; mism = 0.0; mism_pct = 0.0; aatl = 0.0; frav = 0.0; frav_pct = 0.0; hefur_tolur = $false }
   foreach ($m in $h.manudir.Keys) { $n = Num (Cell $a $r $h.manudir[$m]); if ($null -ne $n) { $o.hefur_tolur = $true }; $o.man[$m] = $(if ($null -eq $n) { 0.0 } else { $n }) }
-  foreach ($f in 'medalt', 'medalt_fyrra', 'aatl', 'frav', 'frav_pct') {
+  foreach ($f in 'medalt', 'medalt_fyrra', 'mism', 'mism_pct', 'aatl', 'frav', 'frav_pct') {
     if ($h[$f]) { $n = Num (Cell $a $r $h[$f]); if ($null -ne $n) { $o[$f] = $n; $o.hefur_tolur = $true } }
   }
   return $o
@@ -227,6 +229,8 @@ function Til-Hlut($l, [string[]]$forskeyti) {
   for ($i = 0; $i -lt $manKodar.Count; $i++) { $o[$manLyklar[$i]] = Rnd $l.man[$manKodar[$i]] 2 }
   $o['medalt26'] = Rnd $l.medalt 2
   $o['medalt25'] = Rnd $l.medalt_fyrra 2
+  $o['mism'] = Rnd $l.mism 2
+  $o['mism_pct'] = Rnd $l.mism_pct 4
   $o['aatl'] = Rnd $l.aatl 2
   $o['frav'] = Rnd $l.frav 2
   $o['frav_pct'] = Rnd $l.frav_pct 4
@@ -250,11 +254,24 @@ $lc = Fyrsti-Textadalkur $A
 $H = $null; $kgNu = $null
 $vfHrar = New-Object System.Collections.ArrayList
 $vfSed = @{}
+# Stéttarfélagslínur hvers viðfangs: fyrsta línan ber heiti viðfangs, þær næstu hafa autt heiti
+$stHrar = @{}; $stNu = $null
 for ($r = 1; $r -le (Rows $A); $r++) {
   if (Er-Haus $A $r) { $H = Haus-Dalkar $A $r; continue }
   $lab = Txt (Cell $A $r $lc); $stett = Txt (Cell $A $r ($lc + 1))
   if ($lab -match '^(KG\d\d) ' -and $stett -eq '') { $kgNu = $Matches[1]; continue }
   if (-not $H) { continue }
+  if ($stett -ne '' -and $stett -ne 'Stöðugildi:') {
+    if ($lab -match '^(\d{5}) ') { $stNu = $(if ($vfSed.ContainsKey($Matches[1])) { $null } else { $Matches[1] }) }
+    elseif ($lab -ne '') { $stNu = $null }
+    if (-not $stNu) { continue }
+    $l = Lesa-Lina $A $r $H
+    if (-not $l.hefur_tolur) { continue }
+    $l['name'] = $stett
+    if (-not $stHrar.ContainsKey($stNu)) { $stHrar[$stNu] = New-Object System.Collections.ArrayList }
+    [void]$stHrar[$stNu].Add($l)
+    continue
+  }
   if ($lab -match '^(\d{5}) ' -and $stett -eq '') {
     $kode = $Matches[1]
     $l = Lesa-Lina $A $r $H
@@ -279,6 +296,30 @@ if ($sam.Count -gt 0) {
     if ($s.kg -ne $m.kg) { Vidvorun "11131 og 11135 eru í mismunandi sviðseiningum ($($sam[0].kg) / $($s.kg))." }
   }
   $m.frav_pct = $(if ($m.aatl -ne 0) { $m.frav / $m.aatl } else { 0.0 })
+  $m.mism = $m.medalt - $m.medalt_fyrra
+  $m.mism_pct = $(if ($m.medalt_fyrra -ne 0) { $m.mism / $m.medalt_fyrra } else { 0.0 })
+  # Stéttarfélög beggja viðfanga lögð saman eftir heiti
+  $stSam = [ordered]@{}
+  foreach ($kd in $SAMEINA_KODAR) {
+    if (-not $stHrar.ContainsKey($kd)) { continue }
+    foreach ($s in $stHrar[$kd]) {
+      if (-not $stSam.Contains($s.name)) {
+        $n = [ordered]@{ man = [ordered]@{}; medalt = 0.0; medalt_fyrra = 0.0; aatl = 0.0; frav = 0.0; name = $s.name }
+        foreach ($mk in $manKodar) { $n.man[$mk] = 0.0 }
+        $stSam[$s.name] = $n
+      }
+      $n = $stSam[$s.name]
+      foreach ($mk in $manKodar) { $n.man[$mk] += $s.man[$mk] }
+      $n.medalt += $s.medalt; $n.medalt_fyrra += $s.medalt_fyrra; $n.aatl += $s.aatl; $n.frav += $s.frav
+    }
+  }
+  $stHrar[$SAMEINA_KODI] = New-Object System.Collections.ArrayList
+  foreach ($n in $stSam.Values) {
+    $n['mism'] = $n.medalt - $n.medalt_fyrra
+    $n['mism_pct'] = $(if ($n.medalt_fyrra -ne 0) { $n.mism / $n.medalt_fyrra } else { 0.0 })
+    $n['frav_pct'] = $(if ($n.aatl -ne 0) { $n.frav / $n.aatl } else { 0.0 })
+    [void]$stHrar[$SAMEINA_KODI].Add($n)
+  }
   $nyr = New-Object System.Collections.ArrayList
   $sett = $false
   foreach ($v in $vfHrar) {
@@ -293,6 +334,16 @@ foreach ($l in $vfHrar) {
   $o = [ordered]@{ kg = $l.kg; code = $l.code; name = $l.name }
   $t = Til-Hlut $l
   foreach ($k in $t.Keys) { $o[$k] = $t[$k] }
+  $st = New-Object System.Collections.ArrayList
+  if ($stHrar.ContainsKey($l.code)) {
+    foreach ($s in $stHrar[$l.code]) {
+      $so = [ordered]@{ name = $s.name }
+      $ts = Til-Hlut $s
+      foreach ($k in $ts.Keys) { $so[$k] = $ts[$k] }
+      [void]$st.Add($so)
+    }
+  }
+  $o['stett'] = $st
   [void]$vf_list.Add($o)
 }
 

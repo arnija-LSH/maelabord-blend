@@ -8,7 +8,7 @@ Veldu tímabil efst til hægri og mælaborð í flipunum. Slóðin breytist efti
 
 ## Að nota mælaborðin
 - **Fjárhagur:** Töflurnar sýna tekjur (4), launagjöld (5A) skipt í föst (50) og breytileg laun (51), og önnur rekstrargjöld (5B). Smelltu á sviðseiningu til að sjá deildir. „📊 Greining“ sýnir brúarmynd og frávik kostnaðarliða. Með **+** við deild, eða við **BLEND Samtals** í Viðföng-flipanum, opnast brúarmynd frá áætlun til raunar. Litareglur og orðalisti eru í flipanum *Hjálp & orðalisti*.
-- **Yfirvinna:** Kortin sýna yfirvinnuvaktir umfram viðmið, þ.e. 3,5% af mönnunarheimild. Yfirvinnustöðugildi (YV klst. ÷ 173,4) eru sýnd í kössum, kortum og töflum, og YTD sem meðaltal á mánuð. Í Viðföng-flipanum fylgja athugasemdirnar valinni sviðseiningu. Skilgreiningar eru í flipanum *Leiðbeiningar*.
+- **Yfirvinna:** Kortin sýna yfirvinnuvaktir umfram viðmið, þ.e. 3,5% af mönnunarheimild. Yfirvinnustöðugildi (YV klst. ÷ 173,4) eru sýnd í kössum, kortum og töflum, og YTD sem meðaltal á mánuð. Í Viðföng-flipanum fylgja athugasemdirnar valinni sviðseiningu. „📊 Greining“ við sviðseiningu, og „📊“ við deild, opnar línurit og mánaðartöflu með þróun yfirvinnu. Skilgreiningar eru í flipanum *Leiðbeiningar*.
 - **Stöðugildi:** Efsti ramminn fylgir sviðseiningunni sem er valin í Viðföng-flipanum. Skýringar eru í flipanum *Um skýrsluna*.
 - **Lyfjakostnaður:** Í Yfirliti er hægt að smella á kostnaðarlið, ATC-flokk, sviðseiningu eða mánuð. Hin gröfin sýna þá aðeins það sem er valið. **✕ Hreinsa val** fer aftur í heildina.
 

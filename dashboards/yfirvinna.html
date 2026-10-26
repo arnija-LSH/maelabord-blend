@@ -70,6 +70,21 @@ tr.tot td{background:var(--navy);color:#fff;font-weight:700;border-bottom:none;}
 
 .dpos{color:var(--red);font-weight:700;} .dneg{color:var(--grn);font-weight:700;} .dok{color:var(--muted);}
 
+/* Greining: útvíkkuð lína með línuriti og mánaðartöflu fyrir sviðseiningu eða viðfang */
+.gr-btn{font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--muted);cursor:pointer;margin-left:6px;white-space:nowrap;font-weight:600;}
+.gr-btn:hover{background:var(--pale);color:var(--navy);}
+.gr-btn.open{background:var(--navy);color:#fff;border-color:var(--navy);}
+tr.gr-row > td{padding:0;background:var(--pale);text-align:left;}
+tr.gr-row:hover > td{background:var(--pale);}
+.gr-wrap{position:sticky;left:0;box-sizing:border-box;padding:14px 16px 16px;}
+.gr-title{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;}
+.gr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.gr-chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px;color:var(--muted);}
+.gr-chip b{display:block;font-size:15px;color:var(--text);margin-top:1px;}
+.gr-chip b.dpos{color:var(--red);} .gr-chip b.dneg{color:var(--grn);}
+.gr-chart{position:relative;height:240px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:10px;}
+.gr-tbl{background:#fff;border:1px solid var(--border);border-radius:6px;overflow-x:auto;}
+.kgcard .gr-btn{margin:8px 0 0;}
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
 .kgcard{background:#fff;border-radius:6px;border:1px solid var(--border);padding:13px 15px;border-top:4px solid var(--mid);}
 .kgcard.over{} .kgcard.good{border-top-color:var(--grn);}
@@ -187,7 +202,7 @@ html,body{max-width:100%;overflow-x:hidden;}
   <div class="sec" style="margin-top:18px;">Vaktir umfram viðmið (uppsafnað) eftir sviðseiningu — <span data-m="timabil"></span></div>
   <div class="chart-box"><canvas id="chartKg" height="120"></canvas></div>
 
-  <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — allar sviðseiningar <span style="font-weight:400;color:var(--muted);">(hæst YTD: <span data-m="hiKgsTxt"></span> · smelltu á heiti til að fela/sýna)</span></div>
+  <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — BLEND og sviðseiningar <span style="font-weight:400;color:var(--muted);">(sjálfgefið þær þrjár hæstu YTD: <span data-m="hiKgsTxt"></span> · smelltu á heiti til að bæta við eða fela)</span></div>
   <div class="chart-box"><canvas id="chartTrend3" height="120"></canvas></div>
 </div>
 
@@ -275,6 +290,7 @@ html,body{max-width:100%;overflow-x:hidden;}
       <div class="sec">Notkun síunar (flipi ③)</div>
       <div class="ib">
         <ul>
+          <li>Smelltu á <strong>📊 Greining</strong> (Sviðseiningar) eða <strong>📊</strong> við deild (Viðföng) til að sjá þróun eftir mánuðum í línuriti og töflu</li>
           <li>Smelltu á <strong>KG01–KG07</strong> til að sía eina sviðseiningu. Athugasemdirnar neðst fylgja síunni.</li>
           <li>Smelltu á <strong>&#9888; Yfir viðmiði</strong> til að sjá einungis deildir með vaktir umfram viðmið í <span data-m="manudur"></span></li>
           <li>Sláðu í <strong>leitarboxið</strong> til að leita að nafni deildar</li>
@@ -448,13 +464,16 @@ window.addEventListener('load', function(){
       <div class="row"><span>Yfirvinnuhlutfall (viðmið 3,5%)</span><span style="font-weight:700;color:${d.color}">${fmt(yp,1)}%</span></div>
       <div class="row"><span>Dagvinnustöðugildi (raun)</span><span>${fmt(dv7,1)}</span></div>
       <div class="row"><span>Mönnunarheimild (stöðugildi)</span><span>${fmt(aetl,1)}</span></div>
+      <button class="gr-btn" onclick="opnaKgGreiningu('${kg}')">📊 Greining</button>
     </div>`;
   });
   document.getElementById('kg-cards').innerHTML = cards.join('');
 
   const bDa = rv(D.blend.yv[L])-vm(D.blend.aetlun);
+  skraGreiningu('kg-BLEND', 'BLEND heild', D.blend.yv, D.blend.dv, D.blend.aetlun, '#1F4E79', 'Mönnunarheimild');
+  Object.entries(D.kg).forEach(([kg,d]) => skraGreiningu('kg-'+kg, kg+' '+d.name, d.yv, d.dv, d.aetlun, d.color, 'Mönnunarheimild'));
   const trows = [
-    `<tr class="tot"><td class="l">BLEND heild</td>
+    `<tr class="tot"><td class="l">BLEND heild <button class="gr-btn" onclick="toggleGreining('kg-BLEND',this)">📊 Greining</button></td>
       <td>${fmt(D.blend.dv[L],1)}</td><td>${fmt(D.blend.aetlun,1)}</td>
       <td>${fmt(D.blend.yv[L],0)}</td>
       <td>${fmt(ystg(D.blend.yv[L]),1)}</td>
@@ -464,7 +483,7 @@ window.addEventListener('load', function(){
       <td class="${dCls(bDa)}">${sign(bDa)+fmt(bDa,1)}</td>
       <td>${fmt(ystgYtd(D.blend.yv),1)}</td>
       <td>—</td>
-    </tr>`
+    </tr>` + grRow('kg-BLEND')
   ].concat(Object.entries(D.kg).map(([kg,d])=>{
     const yv7=d.yv[L],dv7=d.dv[L],aetl=d.aetlun;
     const rv7=rv(yv7),vma=vm(aetl),vmr=vm(dv7);
@@ -477,7 +496,7 @@ window.addEventListener('load', function(){
     const ytdVma=vm(aetl)*NM;
     const ytdDa=Math.round((ytdRv-ytdVma)*10)/10;
     return `<tr>
-      <td class="l">${kg} ${d.name}</td>
+      <td class="l">${kg} ${d.name} <button class="gr-btn" onclick="toggleGreining('kg-${kg}',this)">📊 Greining</button></td>
       <td>${fmt(dv7,1)}</td><td>${fmt(aetl,1)}</td>
       <td>${fmt(yv7,0)}</td>
       <td>${fmt(ystg(yv7),1)}</td>
@@ -486,7 +505,7 @@ window.addEventListener('load', function(){
       <td class="${dCls(dv_a)}">${sign(dv_a)+fmt(dv_a,1)}</td>
       <td>${fmt(ystgYtd(d.yv),1)}</td>
       <td class="${dCls(ytdDa)}">${sign(ytdDa)+fmt(ytdDa,0)}</td>
-    </tr>`;
+    </tr>` + grRow('kg-'+kg);
   }));
   document.getElementById('kg-tafla').innerHTML =
     `<thead><tr>
@@ -524,15 +543,20 @@ window.addEventListener('load', function(){
   const allSeries = allKgs.map(kg=>{ const d=D.kg[kg]; return d.yv.map((y,i)=>yvpct(y,d.dv[i])); });
   const hiMax = Math.max(0, ...allSeries.flat());
   new Chart(document.getElementById('chartTrend3').getContext('2d'),{
-    type:'line', data:{labels:MN, datasets:allKgs.map((kg,ii)=>{
-      const hi = hiKgs.includes(kg), c = D.kg[kg].color;
+    type:'line', data:{labels:MN, datasets:[{
+      // Allt sviðið til samanburðar
+      label:'BLEND', data:D.blend.yv.map((y,i)=>yvpct(y,D.blend.dv[i])),
+      borderColor:'#1B2A4A', backgroundColor:'transparent', borderWidth:3, borderDash:[8,4],
+      pointRadius:3, pointBackgroundColor:'#1B2A4A', tension:0.3
+    }].concat(allKgs.map((kg,ii)=>{
+      // Sjálfgefið sjást þrjár verstu sviðseiningarnar; hinum má bæta við með smelli á heiti
+      const c = D.kg[kg].color;
       return {
-        label:kg, data:allSeries[ii],
-        borderColor: hi ? c : c+'99', backgroundColor:'transparent',
-        borderWidth: hi ? 2.8 : 1.4, pointRadius: hi ? 4 : 2, pointBackgroundColor: hi ? c : c+'99', tension:0.3,
-        order: hi ? 0 : 1
+        label:kg, data:allSeries[ii], hidden: !hiKgs.includes(kg),
+        borderColor:c, backgroundColor:'transparent',
+        borderWidth:2.5, pointRadius:4, pointBackgroundColor:c, tension:0.3
       };
-    }).concat([{
+    })).concat([{
       label:'Viðmið 3,5%', data:Array(NM).fill(3.5),
       borderColor:'#0D9488', borderWidth:1.5, borderDash:[5,4], pointRadius:0
     }])},
@@ -541,7 +565,7 @@ window.addEventListener('load', function(){
       plugins:{
       // Skýring í töluröð KG01–KG07 og viðmiðið síðast, óháð teikniröð
       legend:{position:'top',labels:{font:{size:11},boxWidth:14,
-        sort:(a,b)=>(a.text.startsWith('KG')?a.text:'~')<(b.text.startsWith('KG')?b.text:'~')?-1:1}},
+        sort:(a,b)=>{ const r=t=>t==='BLEND'?'0':t.startsWith('KG')?t:'~'; return r(a.text)<r(b.text)?-1:1; }}},
       tooltip:{itemSort:(a,b)=>b.parsed.y-a.parsed.y, callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`}}
     }, scales:{
       y:{min:0,max:Math.max(30, Math.ceil(hiMax/5)*5+5), title:{display:true,text:'YV%',font:{size:11}},
@@ -579,8 +603,9 @@ window.addEventListener('load', function(){
       const aCls = (v.yv_pct > 30 || v.code==='09083') ? 'red' : alertCls[v.code];
       const pc = pctCls(v.yv_pct);
       const style = aCls==='red' ? ' style="background:var(--redl);"' : aCls==='warn' ? ' style="background:var(--warnl);"' : '';
+      skraGreiningu('vf-'+v.code, v.name, v.yv, v.dv || null, v.aetlun, D.kg[kg].color, 'Meðal-DV', v.ytd_yv);
       return `<tr data-kg="${kg}" data-over="${isOver?1:0}"${style}>
-        <td class="l">${v.name}${aCls?` <span class="bdg ${aCls}">&#9888;</span>`:''}</td>
+        <td class="l">${v.name}${aCls?` <span class="bdg ${aCls}">&#9888;</span>`:''} <button class="gr-btn" onclick="toggleGreining('vf-${v.code}',this)">📊</button></td>
         <td>${fmt(v.dv_jul,1)}</td><td>${fmt(v.aetlun,1)}</td>
         <td>${fmt(v.yv[L],0)}</td>
         <td>${fmt(ystg(v.yv[L]),1)}</td>
@@ -590,7 +615,7 @@ window.addEventListener('load', function(){
         <td>${fmt(v.ytd_yv,0)}</td>
         <td>${fmt(v.ytd_yv/VMIN/NM,1)}</td>
         <td class="${dCls(v.ytd_dv)}">${sign(v.ytd_dv)+fmt(v.ytd_dv,0)}</td>
-      </tr>`;
+      </tr>` + grRow('vf-'+v.code);
     });
     // KG subtotal
     const sub_yv7 = entries.reduce((s,v)=>s+v.yv[L],0);
@@ -654,10 +679,10 @@ function fKg(kg, btn){
     const wkg=wrap.dataset.kgWrap;
     if(kg==='all'||kg===wkg){
       wrap.style.display='';
-      wrap.querySelectorAll('tbody tr').forEach(r=>r.style.display='');
+      wrap.querySelectorAll('tbody tr:not(.gr-row)').forEach(r=>r.style.display='');
     } else if(kg==='over'){
       wrap.style.display='';
-      wrap.querySelectorAll('tbody tr').forEach(r=>{
+      wrap.querySelectorAll('tbody tr:not(.gr-row)').forEach(r=>{
         r.style.display=(r.dataset.over==='1'||r.classList.contains('sub'))?'':'none';
       });
     } else {
@@ -665,6 +690,7 @@ function fKg(kg, btn){
     }
   });
   fAlerts(kg);
+  syncGrRows();
 }
 
 // Athugasemdir fylgja síunni: valin sviðseining sýnir bara sínar athugasemdir
@@ -683,12 +709,110 @@ function fSearch(q){
   document.querySelectorAll('[data-kg-wrap]').forEach(wrap=>{
     let any=false;
     wrap.style.display='';
-    wrap.querySelectorAll('tbody tr:not(.sub)').forEach(r=>{
+    wrap.querySelectorAll('tbody tr:not(.sub):not(.gr-row)').forEach(r=>{
       const show=!q||r.cells[0].textContent.toLowerCase().includes(q);
       r.style.display=show?'':'none';
       if(show) any=true;
     });
     wrap.style.display=(q&&!any)?'none':'';
+  });
+  syncGrRows();
+}
+
+// ── Greining (undirmynd) fyrir sviðseiningu eða viðfang ─────────────────────
+// Hver greining: línurit (YV stöðugildi á mánuði + YV% og 3,5% viðmið) og mánaðartafla með YTD-línu.
+const GREINING = {};
+function skraGreiningu(id, heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv){
+  GREINING[id] = { heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv };  // ytdYv: ónámunduð YTD-summa ef hún er til (viðföng)
+}
+function grRow(id){
+  return `<tr class="gr-row" id="gr-${id}" style="display:none"><td colspan="20"><div class="gr-wrap"></div></td></tr>`;
+}
+// Opnar línur haldast opnar þegar síað er, en felast ef línan sem þær tilheyra er falin
+function syncGrRows(){
+  document.querySelectorAll('#vidfong-tables tr.gr-row').forEach(r=>{
+    const p = r.previousElementSibling;
+    r.style.display = (r.dataset.open==='1' && p && p.style.display!=='none') ? '' : 'none';
+  });
+}
+// Breidd greiningar = sýnileg breidd töflurammans, svo hún skruni ekki með breiðri töflu
+function fitGr(row){
+  const wrap = row.closest('.card-wrap');
+  if (wrap) row.querySelector('.gr-wrap').style.width = wrap.clientWidth + 'px';
+}
+window.addEventListener('resize', ()=>document.querySelectorAll('tr.gr-row[data-open="1"]').forEach(fitGr));
+
+function toggleGreining(id, btn){
+  const row = document.getElementById('gr-'+id);
+  if (!row) return;
+  const opna = row.dataset.open !== '1';
+  row.dataset.open = opna ? '1' : '0';
+  row.style.display = opna ? '' : 'none';
+  document.querySelectorAll(`.gr-btn[onclick*="'${id}'"]`).forEach(b=>b.classList.toggle('open', opna));
+  if (!opna) return;
+  fitGr(row);
+  if (!row.dataset.built) { teiknaGreiningu(id, row.querySelector('.gr-wrap')); row.dataset.built = '1'; }
+}
+function opnaKgGreiningu(kg){
+  const row = document.getElementById('gr-kg-'+kg);
+  if (row && row.dataset.open !== '1') toggleGreining('kg-'+kg);
+  if (row) row.previousElementSibling.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function teiknaGreiningu(id, el){
+  const g = GREINING[id], vma = vm(g.aetlun);
+  const ytdYv = g.ytdYv != null ? g.ytdYv : g.yv.reduce((a,x)=>a+x,0);
+  const ytdRv = rv(ytdYv), ytdVm = vma*NM, ytdUm = Math.round((ytdRv-ytdVm)*10)/10;
+  const dvMedal = g.dv ? g.dv.reduce((a,x)=>a+x,0)/NM : null;
+  const ytdYp = g.dv ? yvpct(ytdYv/NM, dvMedal) : null;
+
+  const rows = MNFULL.map((m,i)=>{
+    const yv = g.yv[i]||0, dv = g.dv ? g.dv[i] : null;
+    const rvv = rv(yv), um = Math.round((rvv-vma)*10)/10, yp = dv ? yvpct(yv,dv) : null;
+    return `<tr${i===L?' style="font-weight:700;"':''}><td class="l">${m}</td>
+      <td>${dv!=null?fmt(dv,1):'—'}</td><td>${fmt(yv,0)}</td><td>${fmt(ystg(yv),1)}</td>
+      <td>${yp!=null?`<span class="bdg ${pctCls(yp)}">${fmt(yp,1)}%</span>`:'—'}</td>
+      <td>${fmt(vma,1)}</td><td>${fmt(rvv,1)}</td><td class="${dCls(um)}">${sign(um)+fmt(um,1)}</td></tr>`;
+  });
+  rows.push(`<tr class="sub"><td class="l">${META.ytd_label}</td>
+    <td>${dvMedal!=null?fmt(dvMedal,1):'—'}</td><td>${fmt(ytdYv,0)}</td><td>${fmt(ystgYtd(g.yv),1)}</td>
+    <td>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}</td><td>${fmt(ytdVm,1)}</td><td>${fmt(ytdRv,1)}</td>
+    <td class="${dCls(ytdUm)}">${sign(ytdUm)+fmt(ytdUm,1)}</td></tr>`);
+
+  const cid = 'grc-'+id.replace(/[^\w-]/g,'');
+  el.innerHTML = `
+    <div class="gr-title">Greining — ${g.heiti}</div>
+    <div class="gr-chips">
+      <div class="gr-chip">YV klst. ${STUTT}<b>${fmt(ytdYv,0)}</b></div>
+      <div class="gr-chip">YV stöðugildi (meðaltal)<b>${fmt(ystgYtd(g.yv),1)}</b></div>
+      <div class="gr-chip">Yfirvinnuhlutfall YTD<b>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}</b></div>
+      <div class="gr-chip">${g.heimildHeiti}<b>${fmt(g.aetlun,1)} stg.</b></div>
+      <div class="gr-chip">Vaktir umfram viðmið YTD<b class="${dCls(ytdUm)}">${sign(ytdUm)+fmt(ytdUm,0)}</b></div>
+    </div>
+    <div class="gr-chart"><canvas id="${cid}"></canvas></div>
+    <div class="gr-tbl"><table>
+      <thead><tr><th class="l">Mánuður</th><th>DV stg.</th><th>YV klst.</th><th>YV stöðugildi</th><th>YV%</th>
+        <th>Viðmið (vaktir)</th><th>Raunvaktir</th><th>Umfram viðmið</th></tr></thead>
+      <tbody>${rows.join('')}</tbody></table></div>`;
+
+  new Chart(document.getElementById(cid).getContext('2d'), {
+    type:'bar',
+    data:{labels:MN, datasets:[
+      {label:'Yfirvinnustöðugildi', data:g.yv.map(ystg), backgroundColor:g.litur+'cc', borderRadius:3, yAxisID:'y', order:2},
+      ...(g.dv ? [{label:'YV%', type:'line', data:g.yv.map((y,i)=>yvpct(y,g.dv[i])), borderColor:'#1B2A4A', backgroundColor:'#1B2A4A',
+        borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'y2', order:1}] : []),
+      {label:'Viðmið 3,5%', type:'line', data:Array(NM).fill(3.5), borderColor:'#0D9488', borderDash:[5,4], borderWidth:1.5,
+        pointRadius:0, yAxisID:'y2', order:0}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      plugins:{legend:{position:'top', labels:{font:{size:11}, boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=> ctx.dataset.yAxisID==='y2'
+          ? ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y,1)}%` : ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y,1)} stg.`}}},
+      scales:{
+        y:{beginAtZero:true, title:{display:true, text:'YV stöðugildi', font:{size:11}}, ticks:{callback:v=>fmt(v,0), font:{size:11}}, grid:{color:'#edf1f7'}},
+        y2:{position:'right', beginAtZero:true, title:{display:true, text:'YV%', font:{size:11}}, ticks:{callback:v=>v+'%', font:{size:11}}, grid:{drawOnChartArea:false}},
+        x:{ticks:{font:{size:11}}, grid:{display:false}}
+      }}
   });
 }
 </script>

@@ -252,6 +252,7 @@ foreach ($e in $einingar.Values) {
   $o = [ordered]@{
     code = $e.code; name = $e.heiti; kg = $e.kg
     yv = @($yvRaw | ForEach-Object { Rnd $_ 0 })
+    dv = @($dvRaw | ForEach-Object { Rnd $_ 2 })   # mánaðarleg DV stöðugildi, notuð í greiningu deildar
     dv_jul = (Rnd $dv7 1); aetlun = $aetl; rv_jul = $rv7; vma = $vma; vmr = $vmr
     dv_a = (Rnd ($rv7 - $vma) 1); dv_r = (Rnd ($rv7 - $vmr) 1)
     yv_pct = $(if ($dv7 -gt 0) { Rnd ($yvRaw[$L] / $VMIN / $dv7 * 100) 1 } else { 0.0 })
