@@ -172,7 +172,7 @@ html,body{max-width:100%;overflow-x:hidden;}
 <!-- ══════ TAB 2 — SVIÐSEININGAR ══════ -->
 <div id="panel-svideining" class="panel">
   <div class="note">
-    <span data-m="manudur_ar_stor"></span> · Heim. DV = mönnunarheimild 2026 (aðalviðmið) · Δv(á) = umfram viðmið m.v. heimild
+    <span data-m="manudur_ar_stor"></span> · Heim. DV = mönnunarheimild 2026 (aðalviðmið) · Vaktir umfram viðmið = raunvaktir umfram viðmið m.v. mönnunarheimild
   </div>
   <div class="cards" id="kg-cards"></div>
 
@@ -181,7 +181,7 @@ html,body{max-width:100%;overflow-x:hidden;}
     <table id="kg-tafla"></table>
   </div>
 
-  <div class="sec" style="margin-top:18px;">YTD Δv per sviðseining — <span data-m="timabil"></span></div>
+  <div class="sec" style="margin-top:18px;">Vaktir umfram viðmið (uppsafnað) eftir sviðseiningu — <span data-m="timabil"></span></div>
   <div class="chart-box"><canvas id="chartKg" height="120"></canvas></div>
 
   <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — <span data-m="hiKgsTxt"></span></div>
@@ -231,13 +231,13 @@ html,body{max-width:100%;overflow-x:hidden;}
         <table><thead><tr><th class="l" style="width:130px;">Hugtak</th><th class="l">Skýring</th></tr></thead><tbody>
           <tr><td class="l"><strong>DV stöðugildi</strong></td><td class="l">Dagvinnustöðugildi — grundvöllur allra viðmiðsreikninga.</td></tr>
           <tr><td class="l"><strong>Raun DV</strong></td><td class="l">Greidd dagvinnustöðugildi í <span data-m="manudur"></span> samkvæmt VS-kerfi.</td></tr>
-          <tr><td class="l"><strong>Heim. DV</strong></td><td class="l">Mönnunarheimild 2026 — heimiluð DV stöðugildi. Aðalviðmið Δv(á).</td></tr>
+          <tr><td class="l"><strong>Heim. DV</strong></td><td class="l">Mönnunarheimild 2026 — heimiluð DV stöðugildi. Grunnur viðmiðsins.</td></tr>
           <tr><td class="l"><strong>YV klst.</strong></td><td class="l">Samtals yfirvinnueiningar í klukkustundum.</td></tr>
           <tr><td class="l"><strong>YV%</strong></td><td class="l">YV stöðugildi ÷ DV stöðugildi × 100. Viðmið: 3,5%.</td></tr>
-          <tr><td class="l"><strong>Viðm.v(á)</strong></td><td class="l"><code>Heim. DV × 173,4 × 3,5% ÷ 8,0</code></td></tr>
-          <tr><td class="l"><strong>Raun v.</strong></td><td class="l"><code>YV klst. ÷ 8,0</code></td></tr>
-          <tr><td class="l"><strong>Δv(á)</strong></td><td class="l">Raun v. − Viðm.v(á). <span style="color:var(--red);font-weight:700;">Jákvætt = yfir viðmiði.</span></td></tr>
-          <tr><td class="l"><strong>YTD Δv</strong></td><td class="l">Uppsafnað Δv(á) <span data-m="timabil"></span>.</td></tr>
+          <tr><td class="l"><strong>Viðmið m.v. heimild</strong></td><td class="l"><code>Heim. DV × 173,4 × 3,5% ÷ 8,0</code></td></tr>
+          <tr><td class="l"><strong>Raunvaktir</strong></td><td class="l"><code>YV klst. ÷ 8,0</code></td></tr>
+          <tr><td class="l"><strong>Vaktir umfram viðmið</strong></td><td class="l">Raunvaktir − Viðmið m.v. heimild. <span style="color:var(--red);font-weight:700;">Jákvætt = yfir viðmiði.</span></td></tr>
+          <tr><td class="l"><strong>Vaktir umfram viðmið (uppsafnað)</strong></td><td class="l">Uppsafnaðar vaktir umfram viðmið <span data-m="timabil"></span>.</td></tr>
           <tr><td class="l"><strong>BLEND</strong></td><td class="l">Bráða-, lyflækninga- og endurhæfingarþjónusta — KG01–KG07.</td></tr>
         </tbody></table>
       </div>
@@ -272,7 +272,7 @@ html,body{max-width:100%;overflow-x:hidden;}
       <div class="ib">
         <ul>
           <li>Smelltu á <strong>KG01–KG07</strong> til að sía eina sviðseiningu</li>
-          <li>Smelltu á <strong>&#9888; Yfir viðmiði</strong> til að sjá einungis deildir með Δv(á) > 0 í <span data-m="manudur"></span></li>
+          <li>Smelltu á <strong>&#9888; Yfir viðmiði</strong> til að sjá einungis deildir með vaktir umfram viðmið í <span data-m="manudur"></span></li>
           <li>Sláðu í <strong>leitarboxið</strong> til að leita að nafni deildar</li>
           <li>Síunarhnapparnir og leitin virka saman</li>
         </ul>
@@ -342,9 +342,9 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
   const kpis = [
     {lbl:`Raun DV stg. (${MAN})`, val:fmt(dv7,1), sub:`Áætlun: ${fmt(aetl,1)}`, cls:''},
     {lbl:`YV klst. ${MAN}`,       val:fmt(yv7,0), sub:`YV%: ${fmt(yp7,1)}%`,    cls: yp7>10?'red':yp7>3.5?'amb':''},
-    {lbl:`Raun vaktir ${MAN}`,    val:fmt(rv7,0), sub:`Viðmið (á): ${fmt(vm_a7,0)}`, cls:'red'},
-    {lbl:`Δv ${MAN} (á)`,          val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+' v.', sub:'Umfram mönnunarheimild', cls: dv7_a>0?'red':'grn'},
-    {lbl:`YTD Δv ${STUTT}`,     val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+' v.', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
+    {lbl:`Raun vaktir ${MAN}`,    val:fmt(rv7,0), sub:`Viðmið m.v. heimild: ${fmt(vm_a7,0)} vaktir`, cls:'red'},
+    {lbl:`Vaktir umfram viðmið, ${MAN}`, val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+' vaktir', sub:'Raunvaktir − viðmið m.v. heimild', cls: dv7_a>0?'red':'grn'},
+    {lbl:`Vaktir umfram viðmið, ${STUTT}`, val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+' vaktir', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
   ];
   document.getElementById('kpi-strip').innerHTML = kpis.map(k=>
     `<div class="kpi ${k.cls}"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`
@@ -386,7 +386,7 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
   document.getElementById('ytd-tafla').innerHTML =
     `<thead><tr>
       <th class="l">Mánuður</th><th>Raun DV stg.</th><th>YV klst.</th><th>YV%</th>
-      <th>Viðm.v (á)</th><th>Raun v.</th><th>Δv (á)</th>
+      <th>Viðmið (vaktir)</th><th>Raunvaktir</th><th>Umfram viðmið</th>
     </tr></thead><tbody>${rows.join('')}</tbody>`;
   document.getElementById('fn-svid').textContent = META.fn_svid;
 })();
@@ -410,7 +410,7 @@ window.addEventListener('load', function(){
       legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
       tooltip:{callbacks:{label:ctx=>ctx.dataset.yAxisID==='y1'
         ?` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`
-        :` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} v.`}}
+        :` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} vaktir`}}
     }, scales:{
       y1:{type:'linear',position:'left',min:0,max:Math.max(18, Math.ceil(Math.max(...yps))+2),
         title:{display:true,text:'Yfirvinnuhlutfall (%)',font:{size:11}},
@@ -432,10 +432,12 @@ window.addEventListener('load', function(){
     return `<div class="kgcard ${isOver?'over':'good'}" style="border-top-color:${d.color}">
       <div class="code">${kg}</div>
       <div class="nm">${d.name}</div>
-      <div class="big ${bigCls}" style="color:${d.color}">${sign(dv_a)+fmt(dv_a,0)} v.</div>
-      <div class="row"><span>YV%</span><span style="font-weight:700;color:${d.color}">${fmt(yp,1)}%</span></div>
-      <div class="row"><span>Raun DV</span><span>${fmt(dv7,1)}</span></div>
-      <div class="row"><span>Heim. DV</span><span>${fmt(aetl,1)}</span></div>
+      <div class="big ${bigCls}" style="color:${d.color}">${sign(dv_a)+fmt(dv_a,0)} vaktir</div>
+      <div class="row" style="margin-top:-4px"><span>${isOver ? 'umfram yfirvinnuviðmið' : 'innan yfirvinnuviðmiðs'} í ${MAN}</span><span></span></div>
+      <div class="row"><span>Yfirvinnuvaktir (raun / viðmið)</span><span>${fmt(rv7,0)} / ${fmt(vma,0)}</span></div>
+      <div class="row"><span>Yfirvinnuhlutfall (viðmið 3,5%)</span><span style="font-weight:700;color:${d.color}">${fmt(yp,1)}%</span></div>
+      <div class="row"><span>Dagvinnustöðugildi (raun)</span><span>${fmt(dv7,1)}</span></div>
+      <div class="row"><span>Mönnunarheimild (stöðugildi)</span><span>${fmt(aetl,1)}</span></div>
     </div>`;
   });
   document.getElementById('kg-cards').innerHTML = cards.join('');
@@ -475,8 +477,8 @@ window.addEventListener('load', function(){
   document.getElementById('kg-tafla').innerHTML =
     `<thead><tr>
       <th class="l">Sviðseining</th><th>Raun DV</th><th>Heim. DV</th>
-      <th>YV klst. ${MAN}</th><th>YV%</th><th>Viðm.v(á)</th><th>Raun v.</th>
-      <th><strong>Δv(á) ${MAN}</strong></th><th>YTD Δv(á)</th>
+      <th>YV klst. ${MAN}</th><th>YV%</th><th>Viðmið (vaktir)</th><th>Raunvaktir</th>
+      <th><strong>Umfram viðmið ${MAN}</strong></th><th>Umfram viðmið YTD</th>
     </tr></thead><tbody>${trows.join('')}</tbody>`;
 
   // YTD Δv bar chart per KG
@@ -487,14 +489,14 @@ window.addEventListener('load', function(){
   const kgColors = Object.entries(D.kg).map(([_,d])=>d.color);
   new Chart(document.getElementById('chartKg').getContext('2d'),{
     type:'bar', data:{labels:kgLabels, datasets:[{
-      label:'YTD Δv vaktir '+STUTT,
+      label:'Vaktir umfram viðmið '+STUTT,
       data:ytdDvPerKg, backgroundColor:kgColors, borderRadius:3
     }]},
     options:{responsive:true, ...AR, plugins:{
       legend:{display:false},
-      tooltip:{callbacks:{label:ctx=>` ${sign(ctx.parsed.y)+fmt(ctx.parsed.y)} v.`}}
+      tooltip:{callbacks:{label:ctx=>` ${sign(ctx.parsed.y)+fmt(ctx.parsed.y)} vaktir`}}
     }, scales:{
-      y:{title:{display:true,text:'Δv vaktir (YTD)',font:{size:11}},
+      y:{title:{display:true,text:'Vaktir umfram viðmið (YTD)',font:{size:11}},
          ticks:{callback:v=>(v>0?'+':'')+fmt(v),font:{size:11}},
          grid:{color:'#edf1f7'}},
       x:{ticks:{font:{size:12}},grid:{display:false}}
@@ -587,9 +589,9 @@ window.addEventListener('load', function(){
           <th class="l">Viðfang</th>
           <th>Raun DV</th><th>Heim. DV</th>
           <th>YV klst. ${MAN}</th><th>YV%</th>
-          <th>Viðm.v(á)</th><th>Raun v.</th>
-          <th><strong>Δv(á) ${MAN}</strong></th>
-          <th>YTD klst.</th><th>YTD Δv</th>
+          <th>Viðmið (vaktir)</th><th>Raunvaktir</th>
+          <th><strong>Umfram viðmið ${MAN}</strong></th>
+          <th>YTD klst.</th><th>Umfram viðmið YTD</th>
         </tr></thead>
         <tbody>${rows.join('')}</tbody>
       </table>
