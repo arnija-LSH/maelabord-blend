@@ -187,7 +187,7 @@ html,body{max-width:100%;overflow-x:hidden;}
   <div class="sec" style="margin-top:18px;">Vaktir umfram viðmið (uppsafnað) eftir sviðseiningu — <span data-m="timabil"></span></div>
   <div class="chart-box"><canvas id="chartKg" height="120"></canvas></div>
 
-  <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — <span data-m="hiKgsTxt"></span></div>
+  <div class="sec" style="margin-top:4px;">Yfirvinnuhlutfall eftir mánuðum — allar sviðseiningar <span style="font-weight:400;color:var(--muted);">(hæst YTD: <span data-m="hiKgsTxt"></span> · smelltu á heiti til að fela/sýna)</span></div>
   <div class="chart-box"><canvas id="chartTrend3" height="120"></canvas></div>
 </div>
 
@@ -517,25 +517,32 @@ window.addEventListener('load', function(){
     }}
   });
 
-  // Þróunarlína — þær þrjár sviðseiningar sem eru með hæsta YTD YV% (D.meta.hiKgs)
+  // Þróunarlína — allar sviðseiningar; þær þrjár með hæsta YTD YV% (D.meta.hiKgs) fá sterkar línur,
+  // hinar þunnar og ljósar. Smellur á heiti í skýringunni felur/sýnir línu (sjálfgefið í Chart.js).
   const hiKgs = META.hiKgs.filter(k=>D.kg[k]);
-  const hiColors = hiKgs.map(k=>D.kg[k].color);
-  const hiSeries = hiKgs.map(kg=>{ const d=D.kg[kg]; return d.yv.map((y,i)=>yvpct(y,d.dv[i])); });
-  const hiMax = Math.max(0, ...hiSeries.flat());
+  const allKgs = Object.keys(D.kg).sort();
+  const allSeries = allKgs.map(kg=>{ const d=D.kg[kg]; return d.yv.map((y,i)=>yvpct(y,d.dv[i])); });
+  const hiMax = Math.max(0, ...allSeries.flat());
   new Chart(document.getElementById('chartTrend3').getContext('2d'),{
-    type:'line', data:{labels:MN, datasets:hiKgs.map((kg,ii)=>{
+    type:'line', data:{labels:MN, datasets:allKgs.map((kg,ii)=>{
+      const hi = hiKgs.includes(kg), c = D.kg[kg].color;
       return {
-        label:kg, data:hiSeries[ii],
-        borderColor:hiColors[ii], backgroundColor:'transparent',
-        borderWidth:2.5, pointRadius:4, pointBackgroundColor:hiColors[ii], tension:0.3
+        label:kg, data:allSeries[ii],
+        borderColor: hi ? c : c+'99', backgroundColor:'transparent',
+        borderWidth: hi ? 2.8 : 1.4, pointRadius: hi ? 4 : 2, pointBackgroundColor: hi ? c : c+'99', tension:0.3,
+        order: hi ? 0 : 1
       };
     }).concat([{
       label:'Viðmið 3,5%', data:Array(NM).fill(3.5),
       borderColor:'#0D9488', borderWidth:1.5, borderDash:[5,4], pointRadius:0
     }])},
-    options:{responsive:true, ...AR, plugins:{
-      legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
-      tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`}}
+    options:{responsive:true, ...AR,
+      interaction:{mode:'index', intersect:false},  // músarbending sýnir allar sviðseiningar í mánuðinum
+      plugins:{
+      // Skýring í töluröð KG01–KG07 og viðmiðið síðast, óháð teikniröð
+      legend:{position:'top',labels:{font:{size:11},boxWidth:14,
+        sort:(a,b)=>(a.text.startsWith('KG')?a.text:'~')<(b.text.startsWith('KG')?b.text:'~')?-1:1}},
+      tooltip:{itemSort:(a,b)=>b.parsed.y-a.parsed.y, callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1).replace('.',',')}%`}}
     }, scales:{
       y:{min:0,max:Math.max(30, Math.ceil(hiMax/5)*5+5), title:{display:true,text:'YV%',font:{size:11}},
          ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'#edf1f7'}},
