@@ -305,6 +305,7 @@ table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 th { background: var(--navy); color: #fff; padding: 7px 9px; text-align: right; white-space: nowrap; font-weight: 500; }
 th.th-left, th:first-child { text-align: left; }
 th.th-group { border-right: 1px solid rgba(255,255,255,.2); }
+th.th-group.th-sub { font-weight: 500; opacity: .85; }  /* 50 og 51 eru undirliðir 5A */
 td { padding: 6px 9px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; font-variant-numeric: tabular-nums; }
 td.left { text-align: left; }
 tr:hover td { background: var(--lblue); }
@@ -882,12 +883,29 @@ function toggleSvidAP(kg) {
   }
 }
 
-function buildSvid() {
-  const keys = ['KG01','KG02','KG03','KG04','KG05','KG06','KG07'];
+// Tegundadálkar í töflum sviðseininga og viðfanga: tekjur, launagjöld (5A, skipt í 50 og 51) og önnur rekstrargjöld.
+// Tekjur eru bókaðar sem neikvæð tala og sýndar sem jákvæð upphæð.
+const TEG_COLS = [
+  { k:'4',  heiti:'Tekjur (4)', tekjur:true },
+  { k:'5A', heiti:'Launagjöld (5A)' },
+  { k:'50', heiti:'Föst laun (50)', undir:true },
+  { k:'51', heiti:'Breytileg laun (51)', undir:true },
+  { k:'5B', heiti:'Önnur rekstrargjöld (5B)' },
+];
+function tegCells(node) {
+  return TEG_COLS.map(c => {
+    const d = node[c.k] || { raun:0, fravik:0, fravik_pct:0 };
+    return `<td class="right">${fmt(c.tekjur ? -d.raun : d.raun, 0)}</td><td class="right">${chip(d.fravik, d.fravik_pct)}</td>`;
+  }).join('');
+}
+const tegHeadGroups = () => TEG_COLS.map(c => `<th class="th-group${c.undir ? ' th-sub' : ''}" colspan="2">${c.heiti}</th>`).join('');
+const tegHeadSub = () => TEG_COLS.map(() => '<th>Raun</th><th>Frávik</th>').join('');
+
+function buildSvid() {  const keys = ['KG01','KG02','KG03','KG04','KG05','KG06','KG07'];
   const maxAbs = Math.max(...keys.map(k=>Math.abs(D.svidseining[k]['0'].fravik)));
 
   function row(node, isTotal=false, clickKG=null) {
-    const r=node['0'], t=node['4'], la=node['5A'], od=node['5B'], yv=node['510'];
+    const r=node['0'];
     const barFill = maxAbs>0 ? Math.min(Math.abs(r.fravik)/maxAbs*100,100) : 0;
     const barCls = r.fravik>=0?'grn':'red';
     const nameCell = clickKG
@@ -903,9 +921,7 @@ function buildSvid() {
       <td class="right">${chip(r.fravik, r.fravik_pct)}</td>
       <td class="right">${chipP(r.fravik_pct)}</td>
       <td class="bar-cell"><div class="bar-track"><div class="bar-fill ${barCls}" style="width:${barFill}%"></div></div></td>
-      <td class="right">${fmt(la.raun,0)}</td><td class="right">${chip(la.fravik,la.fravik_pct)}</td>
-      <td class="right">${fmt(yv.raun,0)}</td><td class="right">${chip(yv.fravik,yv.fravik_pct)}</td>
-      <td class="right">${fmt(od.raun,0)}</td><td class="right">${chip(od.fravik,od.fravik_pct)}</td>
+      ${tegCells(node)}
     </tr>`;
   }
 
@@ -913,7 +929,7 @@ function buildSvid() {
   for (const k of keys) {
     rows += row({label: KG_LABELS[k], ...D.svidseining[k]}, false, k);
     // Analysis expandable row
-    rows += `<tr class="ap-row" id="ap-row-${k}"><td colspan="12" id="ap-cell-${k}"></td></tr>`;
+    rows += `<tr class="ap-row" id="ap-row-${k}"><td colspan="16" id="ap-cell-${k}"></td></tr>`;
   }
   rows += row({label:'BLEND Samtals', ...D.blend}, true);
 
@@ -922,15 +938,11 @@ function buildSvid() {
       <tr>
         <th class="th-left" rowspan="2" style="min-width:200px">Sviðseining</th>
         <th class="th-group" colspan="5">Rekstur samtals</th>
-        <th class="th-group" colspan="2">Launagjöld (5A)</th>
-        <th class="th-group" colspan="2">Yfirvinna (510)</th>
-        <th class="th-group" colspan="2">Önnur gjöld (5B)</th>
+        ${tegHeadGroups()}
       </tr>
       <tr class="sub-head">
         <th>Raun</th><th>Áætlun</th><th>Frávik</th><th>Frá%</th><th></th>
-        <th>Raun</th><th>Frávik</th>
-        <th>Raun</th><th>Frávik</th>
-        <th>Raun</th><th>Frávik</th>
+        ${tegHeadSub()}
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -991,12 +1003,10 @@ function buildVidfong() {
       <td class="right">${chip(r.fravik,r.fravik_pct)}</td>
       <td class="right">${chipP(r.fravik_pct)}</td>
       <td class="bar-cell"><div class="bar-track"><div class="bar-fill ${barCls}" style="width:${barFill}%"></div></div></td>
-      <td class="right">${fmt(la.raun,0)}</td><td class="right">${chip(la.fravik,la.fravik_pct)}</td>
-      <td class="right">${fmt(yv.raun,0)}</td><td class="right">${chip(yv.fravik,yv.fravik_pct)}</td>
-      <td class="right">${fmt(od.raun,0)}</td><td class="right">${chip(od.fravik,od.fravik_pct)}</td>
+      ${tegCells(n)}
     </tr>
     <tr class="vf-teg-row vf-${kgKey}" id="${uid}" style="display:none">
-      <td colspan="12">
+      <td colspan="16">
         <div style="padding:10px 16px 4px">
           <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Brú — frá áætlun til raun</div>
           <canvas id="wf-${uid}" style="max-width:100%;display:block"></canvas>
@@ -1019,9 +1029,7 @@ function buildVidfong() {
       <td class="right">${chip(r.fravik,r.fravik_pct)}</td>
       <td class="right">${chipP(r.fravik_pct)}</td>
       <td class="bar-cell"></td>
-      <td class="right">${fmt(la.raun,0)}</td><td class="right">${chip(la.fravik,la.fravik_pct)}</td>
-      <td class="right">${fmt(yv.raun,0)}</td><td class="right">${chip(yv.fravik,yv.fravik_pct)}</td>
-      <td class="right">${fmt(od.raun,0)}</td><td class="right">${chip(od.fravik,od.fravik_pct)}</td>
+      ${tegCells(s)}
     </tr>`;
     for (const vf of D.vidfong[kg]) rows += vfRow(vf, kg);
   }
@@ -1044,12 +1052,10 @@ function buildVidfong() {
     <td class="right">${fmt(r.raun,0)}</td><td class="right">${fmt(r.aetlun,0)}</td>
     <td class="right">${chip(r.fravik,r.fravik_pct)}</td>
     <td class="right">${chipP(r.fravik_pct)}</td><td class="bar-cell"></td>
-    <td class="right">${fmt(la.raun,0)}</td><td class="right">${chip(la.fravik,la.fravik_pct)}</td>
-    <td class="right">${fmt(yv.raun,0)}</td><td class="right">${chip(yv.fravik,yv.fravik_pct)}</td>
-    <td class="right">${fmt(od.raun,0)}</td><td class="right">${chip(od.fravik,od.fravik_pct)}</td>
+    ${tegCells(tb)}
   </tr>
   <tr class="vf-teg-row" id="vf_blend" style="display:none">
-    <td colspan="12">
+    <td colspan="16">
       <div style="padding:10px 16px 4px">
         <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Brú — frá áætlun til raun (BLEND samtals)</div>
         <canvas id="wf-vf_blend" style="max-width:100%;display:block"></canvas>
@@ -1062,15 +1068,11 @@ function buildVidfong() {
     <tr>
       <th class="th-left" rowspan="2" style="min-width:220px">Deild</th>
       <th class="th-group" colspan="5">Rekstur samtals</th>
-      <th class="th-group" colspan="2">Launagjöld</th>
-      <th class="th-group" colspan="2">Yfirvinna (510)</th>
-      <th class="th-group" colspan="2">Önnur gjöld</th>
+      ${tegHeadGroups()}
     </tr>
     <tr class="sub-head">
       <th>Raun</th><th>Áætlun</th><th>Frávik</th><th>Frá%</th><th></th>
-      <th>Raun</th><th>Frávik</th>
-      <th>Raun</th><th>Frávik</th>
-      <th>Raun</th><th>Frávik</th>
+      ${tegHeadSub()}
     </tr></thead>`;
 
   document.getElementById('tbl-vidfong-wrap').innerHTML = `<table>${hdr}<tbody>${rows}</tbody></table>`;
