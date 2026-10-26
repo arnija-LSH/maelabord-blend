@@ -300,10 +300,10 @@ canvas { max-width: 100%; display: block; }
 <div class="kg-bar" id="kg-bar">
   <span class="lbl">Sía:</span>
   <button class="kgbtn all sel" data-kg="ALL" onclick="setKG('ALL',this)">Öll BLEND</button>
+  <button class="kgbtn" data-kg="KG02" onclick="setKG('KG02',this)" style="--kc:#7c3aed">KG02 Sérgreinar bráðaþj.</button>
   <button class="kgbtn" data-kg="KG03" onclick="setKG('KG03',this)" style="--kc:#2563eb">KG03 Ferlideildir</button>
   <button class="kgbtn" data-kg="KG04" onclick="setKG('KG04',this)" style="--kc:#0891b2">KG04 Legudeildir</button>
   <button class="kgbtn" data-kg="KG05" onclick="setKG('KG05',this)" style="--kc:#059669">KG05 Endurhæfing</button>
-  <button class="kgbtn" data-kg="KG02" onclick="setKG('KG02',this)" style="--kc:#7c3aed">KG02 Sérgreinar bráðaþj.</button>
 </div>
 
 <div class="main">
@@ -569,7 +569,7 @@ function renderYfirlit() {
   {
     // Heildarkostnaður hverrar sviðseiningar; ef liður/ATC-flokkur er valinn lýsist sá hluti upp á súlunni.
     // Smellur á sviðseiningu síar hin gröfin (eins og síuhnapparnir).
-    const kgs = ['KG03','KG04','KG05','KG02'];
+    const kgs = ['KG02','KG03','KG04','KG05'];
     const vals = kgs.map(kg => {
       const g2 = D.kg[kg]?.gjald || {};
       return { kg, name: D.kg[kg]?.name||kg, val: totVal(g2), part: harVal() ? valHluti(g2, D.kg[kg]?.atc) : null, color: KG_COLOR[kg]||'#999' };
@@ -770,7 +770,7 @@ document.getElementById('cv-monthly')?.addEventListener('click', e => {
 
 // ─── SVIÐSEININGAR ────────────────────────────────────────────────────────
 function renderSvid() {
-  const kgs = ['KG03','KG04','KG05','KG02'];
+  const kgs = ['KG02','KG03','KG04','KG05'];
   let html = '';
   for (const kg of kgs) {
     const kd = D.kg[kg];
@@ -963,7 +963,7 @@ function renderATC() {
 
   // Per-KG panels
   if (curKG === 'ALL') {
-    const kgs = ['KG03','KG04','KG05','KG02'];
+    const kgs = ['KG02','KG03','KG04','KG05'];
     let panels = '';
     for (const kg of kgs) {
       const kd = D.kg[kg]; if (!kd) continue;
