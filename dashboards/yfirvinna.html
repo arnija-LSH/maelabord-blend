@@ -34,13 +34,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .note{background:var(--pale);border-left:3px solid var(--mid);padding:10px 14px;border-radius:0 4px 4px 0;font-size:12px;color:var(--navy);margin-bottom:16px;}
 .note.summer{border-color:var(--grn);background:var(--grnl);}
 
-.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;}
-.kpi{background:#fff;border-radius:6px;padding:16px 18px;border:1px solid var(--border);border-top:3px solid var(--mid);}
+.kpi-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:22px;}
+.kpi{background:#fff;border-radius:6px;padding:14px 14px;border:1px solid var(--border);border-top:3px solid var(--mid);}
 .kpi.red{border-top-color:var(--red);}
 .kpi.grn{border-top-color:var(--grn);}
 .kpi.amb{border-top-color:var(--warn);}
 .kpi-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:5px;}
-.kpi-val{font-size:25px;font-weight:700;line-height:1;}
+.kpi-val{font-size:24px;font-weight:700;line-height:1;white-space:nowrap;}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;}
 .kpi-val.red{color:var(--red);} .kpi-val.grn{color:var(--grn);} .kpi-val.amb{color:var(--warn);}
 
@@ -103,8 +103,11 @@ code{font-family:monospace;font-size:11px;background:var(--pale);padding:1px 5px
 html,body{max-width:100%;overflow-x:hidden;}
 .chart-box{position:relative;}
 .chart-box canvas{max-width:100%;}
-@media (max-width:1100px){
+/* Sex kassar í einni röð þarf um 1280 px; mjórri skjáir fá 2 × 3 */
+@media (max-width:1280px){
   .kpi-strip{grid-template-columns:repeat(3,1fr);}
+}
+@media (max-width:1100px){
   .cards{grid-template-columns:repeat(2,1fr);}
   .card-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .card-wrap .card-title{position:sticky;left:0;}
@@ -348,8 +351,8 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
     {lbl:`YV klst. ${MAN}`,       val:fmt(yv7,0), sub:`YV%: ${fmt(yp7,1)}%`,    cls: yp7>10?'red':yp7>3.5?'amb':''},
     {lbl:`Yfirvinnustöðugildi (${MAN})`, val:fmt(ystg(yv7),1), sub:`Meðaltal ${STUTT}: ${fmt(ystgYtd(b.yv),1)}`, cls:''},
     {lbl:`Raun vaktir ${MAN}`,    val:fmt(rv7,0), sub:`Viðmið m.v. heimild: ${fmt(vm_a7,0)} vaktir`, cls:'red'},
-    {lbl:`Vaktir umfram viðmið, ${MAN}`, val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+' vaktir', sub:'Raunvaktir − viðmið m.v. heimild', cls: dv7_a>0?'red':'grn'},
-    {lbl:`Vaktir umfram viðmið, ${STUTT}`, val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+' vaktir', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
+    {lbl:`Vaktir umfram viðmið, ${MAN}`, val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+'<span class="kpi-unit"> vaktir</span>', sub:'Raunvaktir − viðmið m.v. heimild', cls: dv7_a>0?'red':'grn'},
+    {lbl:`Vaktir umfram viðmið, ${STUTT}`, val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+'<span class="kpi-unit"> vaktir</span>', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
   ];
   document.getElementById('kpi-strip').innerHTML = kpis.map(k=>
     `<div class="kpi ${k.cls}"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`
