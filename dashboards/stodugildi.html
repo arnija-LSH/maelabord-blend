@@ -25,6 +25,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .kpi.over-yv .val{color:var(--orange);}
 .kpi.warn .val{color:var(--amber);}
 .kpi.good .val{color:var(--green);}
+.kpi-scope{flex-basis:100%;font-size:12px;color:var(--muted);margin-bottom:-4px;}
 .tabs-wrap{padding:18px 28px 0;}
 .tabs{display:flex;border-bottom:2px solid var(--line);overflow-x:auto;}
 .tab-btn{padding:9px 16px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:color .15s,border-color .15s;white-space:nowrap;}
@@ -307,14 +308,40 @@ function showTab(name, btn) {
 }
 
 // ── KPI Row ───────────────────────────────────────────────────────────────────
-function buildKPI() {
-  const s = D._summary;
+// Veikindi eftir sviðseiningu: deildir í veikindagreiningu paraðar við viðföng eftir nafni,
+// vegið með greiddum stöðugildum. Deildir sem finnast ekki í viðfangalistanum detta út.
+function veikindiKG(kg) {
+  const strip = n => n.replace(/^[\d+]+\s*[-–]?\s*/, '').trim().toLowerCase();
+  const kgAfNafni = {};
+  D.vf_list.forEach(v => { kgAfNafni[strip(v.name)] = v.kg; });
+  let g = 0, h = 0, sk = 0;
+  (D.deild_vk || []).forEach(d => {
+    if (kgAfNafni[d.name.trim().toLowerCase()] !== kg) return;
+    g += d.greidd; h += d.greidd * d.heildar_pct; sk += d.greidd * d.skammt_pct;
+  });
+  return g > 0 ? { heildar_pct: h / g, skammt_pct: sk / g } : null;
+}
+
+// Efsti rammi: BLEND í heild, eða sú sviðseining sem er valin í Viðföng-flipanum
+function buildKPI(kg) {
+  let s = D._summary, vk = D.kg_vk;
+  const valin = kg && kg !== 'ALL' && D.kg_totals[kg];
+  if (valin) {
+    const k = D.kg_totals[kg];
+    s = {
+      total_last: k[D.months[D.months.length - 1]], total_medalt: k.medalt26, total_med25: k.medalt25,
+      total_aatl: k.aatl, total_frav: k.frav, total_frav_pct: k.frav_pct,
+      avg_yv: (D.kg_yv[kg] || {}).medalt || 0,
+    };
+    vk = veikindiKG(kg) || { heildar_pct: 0, skammt_pct: 0 };
+  }
   const fravPct = s.total_frav_pct;
   const fravCl = Math.abs(fravPct) < 0.03 ? '' : (fravPct > 0 ? 'warn' : 'neg');
   const yvCl = s.avg_yv > 0.07 ? 'over-yv' : s.avg_yv > 0.035 ? 'warn' : 'good';
-  const vkCl = D.kg_vk.heildar_pct > 0.09 ? 'neg' : D.kg_vk.heildar_pct > 0.06 ? 'warn' : '';
+  const vkCl = vk.heildar_pct > 0.09 ? 'neg' : vk.heildar_pct > 0.06 ? 'warn' : '';
 
   const html = `
+    <div class="kpi-scope">${valin ? `Sýnir: <strong>${D.kg_totals[kg].name}</strong>` : 'Sýnir: <strong>BLEND í heild</strong>'}</div>
     <div class="kpi">
       <div class="val">${isl(s.total_last,1)}</div>
       <div class="sub2">Meðaltal ${AR}: ${isl(s.total_medalt,1)}</div>
@@ -336,8 +363,8 @@ function buildKPI() {
       <div class="lbl">Yfirvinnuhlutfall (meðaltal)</div>
     </div>
     <div class="kpi ${vkCl}">
-      <div class="val">${pct(D.kg_vk.heildar_pct,1)}</div>
-      <div class="sub2">Skammtíma: ${pct(D.kg_vk.skammt_pct,1)}</div>
+      <div class="val">${pct(vk.heildar_pct,1)}</div>
+      <div class="sub2">Skammtíma: ${pct(vk.skammt_pct,1)}</div>
       <div class="lbl">Veikindahlutfall (heildar)</div>
     </div>`;
   document.getElementById('kpi-row').innerHTML = html;
@@ -571,6 +598,7 @@ function toggleVid(code) {
 
 function filterVid(kg, btn) {
   activeFilter = kg;
+  buildKPI(kg);
   document.querySelectorAll('.vid-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   const q = (document.querySelector('.vid-search') || {}).value || '';
