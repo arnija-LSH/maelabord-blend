@@ -156,14 +156,25 @@ $skraDv = Finna-Skra @('Yfirlit dagvinnust*') 'yfirlit dagvinnustöðugilda'
 Write-Host "Yfirvinna: $($skraYv.Name)"
 Write-Host "Stöðugildi: $($skraDv.Name)"
 
+# Fyrra ár til samanburðar (valfrjálst): "5.1 Yfirvinnugreining ... <fyrra ár>.xlsx" í mánaðarmöppunni eða Gögn\Sameiginlegt.
+# Sama uppbygging og 2026-skráin; þaðan koma bæði yfirvinnutímar og greidd DV stöðugildi fyrra árs.
+$fyrraAr = $(if ($Manudur -match '^(\d{4})') { [int]$Matches[1] - 1 } else { (Get-Date).Year - 1 })
+$skraFyrra = @(@($Mappa, (Join-Path (Split-Path -Parent $Mappa) 'Sameiginlegt')) | Where-Object { Test-Path -LiteralPath $_ } |
+  ForEach-Object { Get-ChildItem -LiteralPath $_ -File } |
+  Where-Object { $_.Name -notlike '~$*' -and $_.Name -like '*Yfirvinnugreining*' -and $_.Name -match "\b$fyrraAr\b" -and $_.Name -notmatch 'jan-' } |
+  Sort-Object LastWriteTime -Descending) | Select-Object -First 1
+if ($skraFyrra) { Write-Host "Fyrra ár ($fyrraAr): $($skraFyrra.Name)" } else { Write-Warning "Engin yfirvinnugreining fyrir $fyrraAr fannst; samanburður við fyrra ár sleppt." }
+
 # ── Lesa Excel ────────────────────────────────────────────────────────────────
 $blod = @{}
 $xl = $null
 try {
   $xl = New-Object -ComObject Excel.Application
   $xl.Visible = $false; $xl.DisplayAlerts = $false; $xl.ScreenUpdating = $false
-  foreach ($par in @(@($skraYv.FullName, @{ svid = 'Yfirvinnugreining\s*-?\s*Svi[ðd]$'; svidein = 'Yfirvinnugreining.*svi[ðd]sein'; vidf = 'Yfirvinnugreining.*vi[ðd]f' }),
-                     @($skraDv.FullName, @{ dvman = '^Dv\.stg\s*-\s*mán$'; dvkg = '^Dv\.stg\.\s*-\s*svi[ðd]sein'; dvvidf = '^Dv\.stg\.\s*-\s*vi[ðd]f' }))) {
+  $parList = @(@($skraYv.FullName, @{ svid = 'Yfirvinnugreining\s*-?\s*Svi[ðd]$'; svidein = 'Yfirvinnugreining.*svi[ðd]sein'; vidf = 'Yfirvinnugreining.*vi[ðd]f' }),
+               @($skraDv.FullName, @{ dvman = '^Dv\.stg\s*-\s*mán$'; dvkg = '^Dv\.stg\.\s*-\s*svi[ðd]sein'; dvvidf = '^Dv\.stg\.\s*-\s*vi[ðd]f' }))
+  if ($skraFyrra) { $parList += , @($skraFyrra.FullName, @{ f_svid = 'Yfirvinnugreining\s*-?\s*Svi[ðd]$'; f_svidein = 'Yfirvinnugreining.*svi[ðd]sein'; f_vidf = 'Yfirvinnugreining.*vi[ðd]f' }) }
+  foreach ($par in $parList) {
     $wb = $null
     try {
       $wb = $xl.Workbooks.Open($par[0], 0, $true)
@@ -262,6 +273,30 @@ foreach ($e in $einingar.Values) {
   [void]$vidfong.Add($o)
   $extra[$e.code] = @{ yv = $yvRaw; dv = $dvRaw; aetlun = $aetlunVidf[$e.code]; hlutar = @($e.hlutar.Keys) }
 }
+# ── Fyrra ár (12 mánuðir) fyrir svið, sviðseiningar og viðföng ─────────────────
+function Arr12($h, [int]$d) { , @(1..12 | ForEach-Object { $x = $h[$_]; if ($null -eq $x) { $x = 0 }; Rnd $x $d }) }
+if ($skraFyrra -and $blod.ContainsKey('f_svid')) {
+  $sF = (Lesa-Yfirvinnublad $blod['f_svid'] '^KG\s')[0]
+  $D.blend.fyrra = [ordered]@{ yv = (Arr12 $sF.yv 0); dv = (Arr12 $sF.dv 2) }
+  foreach ($b in (Lesa-Yfirvinnublad $blod['f_svidein'] '^KG\d\d\s')) {
+    if ($D.kg.Contains($b.kg) -and -not $D.kg[$b.kg].Contains('fyrra')) { $D.kg[$b.kg].fyrra = [ordered]@{ yv = (Arr12 $b.yv 0); dv = (Arr12 $b.dv 2) } }
+  }
+  # Viðföng: sömu sameiningarreglur og fyrir árið í ár; viðföng sem ekki eru til í ár detta út
+  $vF = @{}
+  foreach ($b in (Lesa-Yfirvinnublad $blod['f_vidf'] '^\d{5}\s')) {
+    $code = $b.heiti.Substring(0, 5); $lyk = $code; if ($SAMEINA.ContainsKey($code)) { $lyk = $SAMEINA[$code] }
+    if (-not $vF.ContainsKey($lyk)) { $vF[$lyk] = @{ yv = @{}; dv = @{}; hlutar = @{} } }
+    if ($vF[$lyk].hlutar.ContainsKey($code)) { continue }; $vF[$lyk].hlutar[$code] = 1
+    foreach ($m in $b.yv.Keys) { $vF[$lyk].yv[$m] = [double]$vF[$lyk].yv[$m] + $b.yv[$m] }
+    foreach ($m in $b.dv.Keys) { $vF[$lyk].dv[$m] = [double]$vF[$lyk].dv[$m] + $b.dv[$m] }
+  }
+  $ann = 0
+  foreach ($o in $vidfong) {
+    if ($vF.ContainsKey($o.code)) { $o['fyrra'] = [ordered]@{ yv = (Arr12 $vF[$o.code].yv 0); dv = (Arr12 $vF[$o.code].dv 2) }; $ann++ }
+  }
+  Write-Host ("Fyrra ár: BLEND YV jan–{0} {1} klst. · {2} af {3} viðföngum með samanburð" -f $MN_ALL[$L].ToLower(), (F0 (($D.blend.fyrra.yv[0..$L] | Measure-Object -Sum).Sum)), $ann, $vidfong.Count)
+}
+
 $D.vidfong = @($vidfong | Sort-Object @{ e = { $_.kg } }, @{ e = { $_.ytd_yv }; Descending = $true }, @{ e = { $_.code } })
 
 # ── Lýsigögn og textar ────────────────────────────────────────────────────────
@@ -348,7 +383,8 @@ $D.meta = [ordered]@{
   throun_note  = $throun
   fn_svid      = "Viðmið 3,5% · 8 klst./vakt · 173,4 klst./mán. · $mnCap-gögn eru bráðabirgðatölur · Ópersónugreinanlegt — LSH Fjármálasvið"
   gogn_lokad   = "$mnCap $ar — tölur eru bráðabirgðatölur"
-  heimildir    = @($skraYv.Name, $skraDv.Name)
+  heimildir    = @(@($skraYv.Name, $skraDv.Name) + @($(if ($skraFyrra) { $skraFyrra.Name })) | Where-Object { $_ })
+  fyrraAr      = $(if ($D.blend.Contains('fyrra')) { $fyrraAr } else { $null })
   sjalfvirkt   = 'Textar í throun_note, alerts, fn_svid og gogn_lokad eru myndaðir sjálfvirkt út frá gögnum — yfirfara.'
 }
 # meta fyrst

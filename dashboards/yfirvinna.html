@@ -251,6 +251,7 @@ html,body{max-width:100%;overflow-x:hidden;}
           <tr><td class="l"><strong>Raun DV</strong></td><td class="l">Greidd dagvinnustöðugildi í <span data-m="manudur"></span> samkvæmt VS-kerfi.</td></tr>
           <tr><td class="l"><strong>Heim. DV</strong></td><td class="l">Mönnunarheimild 2026 — heimiluð DV stöðugildi. Grunnur viðmiðsins.</td></tr>
           <tr><td class="l"><strong>YV klst.</strong></td><td class="l">Samtals yfirvinnueiningar í klukkustundum.</td></tr>
+          <tr><td class="l"><strong>Samanburður við fyrra ár</strong></td><td class="l">Sama tímabil í fyrra (t.d. jan–sept 2025), úr yfirvinnugreiningu fyrra árs. Breyting % = (í ár − í fyrra) ÷ í fyrra. <span style="color:var(--red);font-weight:700;">Rautt = meiri yfirvinna en í fyrra.</span> Síðasti mánuður í ár er bráðabirgðatala.</td></tr>
           <tr><td class="l"><strong>YV stöðugildi</strong></td><td class="l"><code>YV klst. ÷ 173,4</code> — yfirvinna mánaðar umreiknuð í stöðugildi. YTD er sýnt sem meðaltal á mánuð.</td></tr>
           <tr><td class="l"><strong>YV%</strong></td><td class="l">YV stöðugildi ÷ DV stöðugildi × 100. Viðmið: 3,5%.</td></tr>
           <tr><td class="l"><strong>Viðmið m.v. heimild</strong></td><td class="l"><code>Heim. DV × 173,4 × 3,5% ÷ 8,0</code></td></tr>
@@ -338,7 +339,14 @@ const rv = yv => Math.round(yv/VID*10)/10;
 const yvpct = (yv,dv) => dv>0 ? Math.round(yv/VMIN/dv*1000)/10 : 0;
 // Yfirvinnustöðugildi: yfirvinnutímar mánaðar ÷ 173,4 klst. YTD er sýnt sem meðaltal á mánuð.
 const ystg = yv => yv/VMIN;
-const ystgYtd = arr => arr.reduce((a,x)=>a+x,0)/VMIN/NM;
+const ystgYtd = arr => arr.slice(0,NM).reduce((a,x)=>a+x,0)/VMIN/NM;
+// Samanburður við fyrra ár (D.*.fyrra = 12 mánuðir fyrra árs; borið saman við sama tímabil)
+const FA = META.fyrraAr || null;
+const harFyrra = !!(FA && D.blend.fyrra);
+const sumYtd = arr => arr ? arr.slice(0,NM).reduce((a,x)=>a+x,0) : null;
+const brPct = (nu, fyrr) => (fyrr && fyrr>0) ? (nu-fyrr)/fyrr*100 : null;
+// Meiri yfirvinna en í fyrra er rauð, minni græn
+const brTd = p => p==null ? '<td class="dok">—</td>' : `<td class="${p>0?'dpos':p<0?'dneg':'dok'}">${p>0?'+':''}${fmt(p,1)}%</td>`;
 // Íslenskt talnasnið óháð tungumálastuðningi vafrans: punktur fyrir þúsundir, komma fyrir aukastafi.
 const fmt = (n,d=0) => {
   if (n==null) return '—';
@@ -364,8 +372,8 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
 
   const kpis = [
     {lbl:`Raun DV stg. (${MAN})`, val:fmt(dv7,1), sub:`Áætlun: ${fmt(aetl,1)}`, cls:''},
-    {lbl:`YV klst. ${MAN}`,       val:fmt(yv7,0), sub:`YV%: ${fmt(yp7,1)}%`,    cls: yp7>10?'red':yp7>3.5?'amb':''},
-    {lbl:`Yfirvinnustöðugildi (${MAN})`, val:fmt(ystg(yv7),1), sub:`Meðaltal ${STUTT}: ${fmt(ystgYtd(b.yv),1)}`, cls:''},
+    {lbl:`YV klst. ${MAN}`,       val:fmt(yv7,0), sub:`YV%: ${fmt(yp7,1)}%` + (harFyrra ? ` · ${MAN} ${FA}: ${fmt(b.fyrra.yv[L],0)}` : ''),    cls: yp7>10?'red':yp7>3.5?'amb':''},
+    {lbl:`Yfirvinnustöðugildi (${MAN})`, val:fmt(ystg(yv7),1), sub:`Meðaltal ${STUTT}: ${fmt(ystgYtd(b.yv),1)}` + (harFyrra ? ` · ${FA}: ${fmt(ystgYtd(b.fyrra.yv),1)}` : ''), cls:''},
     {lbl:`Raun vaktir ${MAN}`,    val:fmt(rv7,0), sub:`Viðmið m.v. heimild: ${fmt(vm_a7,0)} vaktir`, cls:'red'},
     {lbl:`Vaktir umfram viðmið, ${MAN}`, val:(dv7_a>0?'+':'')+fmt(dv7_a,0)+'<span class="kpi-unit"> vaktir</span>', sub:'Raunvaktir − viðmið m.v. heimild', cls: dv7_a>0?'red':'grn'},
     {lbl:`Vaktir umfram viðmið, ${STUTT}`, val:(ytdDv>0?'+':'')+fmt(ytdDv,0)+'<span class="kpi-unit"> vaktir</span>', sub:'Uppsafnað umfram viðmið', cls: ytdDv>100?'red':''},
@@ -389,8 +397,10 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
       <td class="l">${m}</td>
       <td>${fmt(dv,1)}</td>
       <td>${fmt(yv,0)}</td>
+      ${harFyrra ? `<td>${fmt(b.fyrra.yv[i],0)}</td>${brTd(brPct(yv,b.fyrra.yv[i]))}` : ''}
       <td>${fmt(ystg(yv),1)}</td>
       <td><span class="bdg ${pc}">${fmt(yp,1)}%</span></td>
+      ${harFyrra ? `<td>${fmt(yvpct(b.fyrra.yv[i],b.fyrra.dv[i]),1)}%</td>` : ''}
       <td>${fmt(vma,1)}</td>
       <td>${fmt(rv7,1)}</td>
       <td class="${dCls(dv_a)}">${sign(dv_a)+fmt(dv_a,1)}</td>
@@ -404,13 +414,13 @@ const dCls   = d => d>0?'dpos':d<0?'dneg':'dok';
   const tYp=yvpct(tYv/NM, b.dv.reduce((a,x)=>a+x)/NM);
   rows.push(`<tr class="tot">
     <td class="l">${META.ytd_label}</td><td>—</td>
-    <td>${fmt(tYv,0)}</td><td title="Meðaltal á mánuð">${fmt(ystgYtd(b.yv),1)}</td><td>${fmt(tYp,1)}%</td>
+    <td>${fmt(tYv,0)}</td>${harFyrra ? `<td>${fmt(sumYtd(b.fyrra.yv),0)}</td>${brTd(brPct(tYv,sumYtd(b.fyrra.yv)))}` : ''}<td title="Meðaltal á mánuð">${fmt(ystgYtd(b.yv),1)}</td><td>${fmt(tYp,1)}%</td>${harFyrra ? `<td>${fmt(yvpct(sumYtd(b.fyrra.yv)/NM, sumYtd(b.fyrra.dv)/NM),1)}%</td>` : ''}
     <td>${fmt(tVma,1)}</td><td>${fmt(tRv,1)}</td>
     <td>${sign(tDa)+fmt(tDa,1)}</td>
   </tr>`);
   document.getElementById('ytd-tafla').innerHTML =
     `<thead><tr>
-      <th class="l">Mánuður</th><th>Raun DV stg.</th><th>YV klst.</th><th>YV stöðugildi</th><th>YV%</th>
+      <th class="l">Mánuður</th><th>Raun DV stg.</th><th>YV klst.</th>${harFyrra ? `<th>YV klst. ${FA}</th><th>Breyting</th>` : ''}<th>YV stöðugildi</th><th>YV%</th>${harFyrra ? `<th>YV% ${FA}</th>` : ''}
       <th>Viðmið (vaktir)</th><th>Raunvaktir</th><th>Umfram viðmið</th>
     </tr></thead><tbody>${rows.join('')}</tbody>`;
   document.getElementById('fn-svid').textContent = META.fn_svid;
@@ -430,7 +440,8 @@ window.addEventListener('load', function(){
        borderWidth:2, pointRadius:4, pointBackgroundColor:'#2C4A72', tension:0.3, yAxisID:'y2', order:1},
       {label:'Viðmið 3,5%', data:Array(NM).fill(3.5), type:'line', borderColor:'#0D9488', borderWidth:2,
        borderDash:[6,4], pointRadius:0, yAxisID:'y1', order:0},
-    ]},
+    ].concat(harFyrra ? [{label:'YV% '+FA, data:MN.map((_,i)=>yvpct(b.fyrra.yv[i],b.fyrra.dv[i])), type:'line',
+       borderColor:'#6b7280', backgroundColor:'#6b7280', borderWidth:2, borderDash:[3,3], pointRadius:3, tension:0.3, yAxisID:'y1', order:0}] : [])},
     options:{responsive:true, ...AR, plugins:{
       legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
       tooltip:{callbacks:{label:ctx=>ctx.dataset.yAxisID==='y1'
@@ -464,14 +475,15 @@ window.addEventListener('load', function(){
       <div class="row"><span>Yfirvinnuhlutfall (viðmið 3,5%)</span><span style="font-weight:700;color:${d.color}">${fmt(yp,1)}%</span></div>
       <div class="row"><span>Dagvinnustöðugildi (raun)</span><span>${fmt(dv7,1)}</span></div>
       <div class="row"><span>Mönnunarheimild (stöðugildi)</span><span>${fmt(aetl,1)}</span></div>
+      ${harFyrra && d.fyrra ? (()=>{ const p=brPct(sumYtd(d.yv), sumYtd(d.fyrra.yv)); return `<div class="row"><span>YV klst. ${STUTT} frá ${FA}</span><span class="${p>0?'dpos':p<0?'dneg':''}">${p==null?'—':(p>0?'+':'')+fmt(p,1)+'%'}</span></div>`; })() : ''}
       <button class="gr-btn" onclick="opnaKgGreiningu('${kg}')">📊 Greining</button>
     </div>`;
   });
   document.getElementById('kg-cards').innerHTML = cards.join('');
 
   const bDa = rv(D.blend.yv[L])-vm(D.blend.aetlun);
-  skraGreiningu('kg-BLEND', 'BLEND heild', D.blend.yv, D.blend.dv, D.blend.aetlun, '#1F4E79', 'Mönnunarheimild');
-  Object.entries(D.kg).forEach(([kg,d]) => skraGreiningu('kg-'+kg, kg+' '+d.name, d.yv, d.dv, d.aetlun, d.color, 'Mönnunarheimild'));
+  skraGreiningu('kg-BLEND', 'BLEND heild', D.blend.yv, D.blend.dv, D.blend.aetlun, '#1F4E79', 'Mönnunarheimild', null, D.blend.fyrra);
+  Object.entries(D.kg).forEach(([kg,d]) => skraGreiningu('kg-'+kg, kg+' '+d.name, d.yv, d.dv, d.aetlun, d.color, 'Mönnunarheimild', null, d.fyrra));
   const trows = [
     `<tr class="tot"><td class="l">BLEND heild <button class="gr-btn" onclick="toggleGreining('kg-BLEND',this)">📊 Greining</button></td>
       <td>${fmt(D.blend.dv[L],1)}</td><td>${fmt(D.blend.aetlun,1)}</td>
@@ -482,6 +494,7 @@ window.addEventListener('load', function(){
       <td>${fmt(rv(D.blend.yv[L]),1)}</td>
       <td class="${dCls(bDa)}">${sign(bDa)+fmt(bDa,1)}</td>
       <td>${fmt(ystgYtd(D.blend.yv),1)}</td>
+      ${harFyrra ? brTd(brPct(sumYtd(D.blend.yv), sumYtd(D.blend.fyrra.yv))) : ''}
       <td>—</td>
     </tr>` + grRow('kg-BLEND')
   ].concat(Object.entries(D.kg).map(([kg,d])=>{
@@ -504,6 +517,7 @@ window.addEventListener('load', function(){
       <td>${fmt(vma,1)}</td><td>${fmt(rv7,1)}</td>
       <td class="${dCls(dv_a)}">${sign(dv_a)+fmt(dv_a,1)}</td>
       <td>${fmt(ystgYtd(d.yv),1)}</td>
+      ${harFyrra ? brTd(d.fyrra ? brPct(ytdYv, sumYtd(d.fyrra.yv)) : null) : ''}
       <td class="${dCls(ytdDa)}">${sign(ytdDa)+fmt(ytdDa,0)}</td>
     </tr>` + grRow('kg-'+kg);
   }));
@@ -511,7 +525,7 @@ window.addEventListener('load', function(){
     `<thead><tr>
       <th class="l">Sviðseining</th><th>Raun DV</th><th>Heim. DV</th>
       <th>YV klst. ${MAN}</th><th>YV stg. ${MAN}</th><th>YV%</th><th>Viðmið (vaktir)</th><th>Raunvaktir</th>
-      <th><strong>Umfram viðmið ${MAN}</strong></th><th>YV stg. meðaltal YTD</th><th>Umfram viðmið YTD</th>
+      <th><strong>Umfram viðmið ${MAN}</strong></th><th>YV stg. meðaltal YTD</th>${harFyrra ? `<th>YV klst. YTD frá ${FA}</th>` : ''}<th>Umfram viðmið YTD</th>
     </tr></thead><tbody>${trows.join('')}</tbody>`;
 
   // YTD Δv bar chart per KG
@@ -603,7 +617,7 @@ window.addEventListener('load', function(){
       const aCls = (v.yv_pct > 30 || v.code==='09083') ? 'red' : alertCls[v.code];
       const pc = pctCls(v.yv_pct);
       const style = aCls==='red' ? ' style="background:var(--redl);"' : aCls==='warn' ? ' style="background:var(--warnl);"' : '';
-      skraGreiningu('vf-'+v.code, v.name, v.yv, v.dv || null, v.aetlun, D.kg[kg].color, 'Meðal-DV', v.ytd_yv);
+      skraGreiningu('vf-'+v.code, v.name, v.yv, v.dv || null, v.aetlun, D.kg[kg].color, 'Meðal-DV', v.ytd_yv, v.fyrra);
       return `<tr data-kg="${kg}" data-over="${isOver?1:0}"${style}>
         <td class="l">${v.name}${aCls?` <span class="bdg ${aCls}">&#9888;</span>`:''} <button class="gr-btn" onclick="toggleGreining('vf-${v.code}',this)">📊</button></td>
         <td>${fmt(v.dv_jul,1)}</td><td>${fmt(v.aetlun,1)}</td>
@@ -613,6 +627,7 @@ window.addEventListener('load', function(){
         <td>${fmt(v.vma,1)}</td><td>${fmt(v.rv_jul,1)}</td>
         <td class="${dCls(v.dv_a)}">${sign(v.dv_a)+fmt(v.dv_a,1)}</td>
         <td>${fmt(v.ytd_yv,0)}</td>
+        ${harFyrra ? brTd(v.fyrra ? brPct(v.ytd_yv, sumYtd(v.fyrra.yv)) : null) : ''}
         <td>${fmt(v.ytd_yv/VMIN/NM,1)}</td>
         <td class="${dCls(v.ytd_dv)}">${sign(v.ytd_dv)+fmt(v.ytd_dv,0)}</td>
       </tr>` + grRow('vf-'+v.code);
@@ -635,6 +650,7 @@ window.addEventListener('load', function(){
       <td>${fmt(sub_vma,1)}</td><td>${fmt(sub_rv,1)}</td>
       <td class="${dCls(sub_da)}">${sign(sub_da)+fmt(sub_da,1)}</td>
       <td>${fmt(sub_ytdYv,0)}</td>
+      ${harFyrra ? brTd(D.kg[kg].fyrra ? brPct(sub_ytdYv, sumYtd(D.kg[kg].fyrra.yv)) : null) : ''}
       <td>${fmt(sub_ytdYv/VMIN/NM,1)}</td>
       <td class="${dCls(sub_ytdDv)}">${sign(sub_ytdDv)+fmt(sub_ytdDv,0)}</td>
     </tr>`);
@@ -648,7 +664,7 @@ window.addEventListener('load', function(){
           <th>YV klst. ${MAN}</th><th>YV stg. ${MAN}</th><th>YV%</th>
           <th>Viðmið (vaktir)</th><th>Raunvaktir</th>
           <th><strong>Umfram viðmið ${MAN}</strong></th>
-          <th>YTD klst.</th><th>YV stg. meðaltal YTD</th><th>Umfram viðmið YTD</th>
+          <th>YTD klst.</th>${harFyrra ? `<th>Breyting frá ${FA}</th>` : ''}<th>YV stg. meðaltal YTD</th><th>Umfram viðmið YTD</th>
         </tr></thead>
         <tbody>${rows.join('')}</tbody>
       </table>
@@ -722,8 +738,8 @@ function fSearch(q){
 // ── Greining (undirmynd) fyrir sviðseiningu eða viðfang ─────────────────────
 // Hver greining: línurit (YV stöðugildi á mánuði + YV% og 3,5% viðmið) og mánaðartafla með YTD-línu.
 const GREINING = {};
-function skraGreiningu(id, heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv){
-  GREINING[id] = { heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv };  // ytdYv: ónámunduð YTD-summa ef hún er til (viðföng)
+function skraGreiningu(id, heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv, fyrra){
+  GREINING[id] = { heiti, yv, dv, aetlun, litur, heimildHeiti, ytdYv, fyrra: harFyrra ? (fyrra || null) : null };  // ytdYv: ónámunduð YTD-summa ef hún er til (viðföng)
 }
 function grRow(id){
   return `<tr class="gr-row" id="gr-${id}" style="display:none"><td colspan="20"><div class="gr-wrap"></div></td></tr>`;
@@ -760,47 +776,65 @@ function opnaKgGreiningu(kg){
 }
 
 function teiknaGreiningu(id, el){
-  const g = GREINING[id], vma = vm(g.aetlun);
+  const g = GREINING[id], vma = vm(g.aetlun), f = g.fyrra;
   const ytdYv = g.ytdYv != null ? g.ytdYv : g.yv.reduce((a,x)=>a+x,0);
   const ytdRv = rv(ytdYv), ytdVm = vma*NM, ytdUm = Math.round((ytdRv-ytdVm)*10)/10;
   const dvMedal = g.dv ? g.dv.reduce((a,x)=>a+x,0)/NM : null;
   const ytdYp = g.dv ? yvpct(ytdYv/NM, dvMedal) : null;
+  // Fyrra ár, sama tímabil
+  const fYtd = f ? sumYtd(f.yv) : null;
+  const fYp = f ? yvpct(fYtd/NM, sumYtd(f.dv)/NM) : null;
+  const fBr = f ? brPct(ytdYv, fYtd) : null;
 
   const rows = MNFULL.map((m,i)=>{
     const yv = g.yv[i]||0, dv = g.dv ? g.dv[i] : null;
     const rvv = rv(yv), um = Math.round((rvv-vma)*10)/10, yp = dv ? yvpct(yv,dv) : null;
     return `<tr${i===L?' style="font-weight:700;"':''}><td class="l">${m}</td>
-      <td>${dv!=null?fmt(dv,1):'—'}</td><td>${fmt(yv,0)}</td><td>${fmt(ystg(yv),1)}</td>
+      <td>${dv!=null?fmt(dv,1):'—'}</td><td>${fmt(yv,0)}</td>
+      ${f ? `<td>${fmt(f.yv[i],0)}</td>${brTd(brPct(yv,f.yv[i]))}` : ''}
+      <td>${fmt(ystg(yv),1)}</td>
       <td>${yp!=null?`<span class="bdg ${pctCls(yp)}">${fmt(yp,1)}%</span>`:'—'}</td>
+      ${f ? `<td>${fmt(yvpct(f.yv[i],f.dv[i]),1)}%</td>` : ''}
       <td>${fmt(vma,1)}</td><td>${fmt(rvv,1)}</td><td class="${dCls(um)}">${sign(um)+fmt(um,1)}</td></tr>`;
   });
   rows.push(`<tr class="sub"><td class="l">${META.ytd_label}</td>
-    <td>${dvMedal!=null?fmt(dvMedal,1):'—'}</td><td>${fmt(ytdYv,0)}</td><td>${fmt(ystgYtd(g.yv),1)}</td>
-    <td>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}</td><td>${fmt(ytdVm,1)}</td><td>${fmt(ytdRv,1)}</td>
+    <td>${dvMedal!=null?fmt(dvMedal,1):'—'}</td><td>${fmt(ytdYv,0)}</td>
+    ${f ? `<td>${fmt(fYtd,0)}</td>${brTd(fBr)}` : ''}
+    <td>${fmt(ystgYtd(g.yv),1)}</td>
+    <td>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}</td>
+    ${f ? `<td>${fmt(fYp,1)}%</td>` : ''}
+    <td>${fmt(ytdVm,1)}</td><td>${fmt(ytdRv,1)}</td>
     <td class="${dCls(ytdUm)}">${sign(ytdUm)+fmt(ytdUm,1)}</td></tr>`);
 
   const cid = 'grc-'+id.replace(/[^\w-]/g,'');
+  const brKlasi = fBr==null ? '' : fBr>0 ? 'dpos' : fBr<0 ? 'dneg' : '';
   el.innerHTML = `
     <div class="gr-title">Greining — ${g.heiti}</div>
     <div class="gr-chips">
       <div class="gr-chip">YV klst. ${STUTT}<b>${fmt(ytdYv,0)}</b></div>
-      <div class="gr-chip">YV stöðugildi (meðaltal)<b>${fmt(ystgYtd(g.yv),1)}</b></div>
-      <div class="gr-chip">Yfirvinnuhlutfall YTD<b>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}</b></div>
+      ${f ? `<div class="gr-chip">YV klst. ${STUTT.replace(/\s*\d{4}$/,'')} ${FA}<b>${fmt(fYtd,0)}</b></div>
+             <div class="gr-chip">Breyting frá ${FA}<b class="${brKlasi}">${fBr==null?'—':(fBr>0?'+':'')+fmt(fBr,1)+'%'}</b></div>` : ''}
+      <div class="gr-chip">YV stöðugildi (meðaltal)<b>${fmt(ystgYtd(g.yv),1)}${f ? ` <small style="font-weight:400;color:var(--muted)">(${FA}: ${fmt(ystgYtd(f.yv),1)})</small>` : ''}</b></div>
+      <div class="gr-chip">Yfirvinnuhlutfall YTD<b>${ytdYp!=null?fmt(ytdYp,1)+'%':'—'}${f ? ` <small style="font-weight:400;color:var(--muted)">(${FA}: ${fmt(fYp,1)}%)</small>` : ''}</b></div>
       <div class="gr-chip">${g.heimildHeiti}<b>${fmt(g.aetlun,1)} stg.</b></div>
       <div class="gr-chip">Vaktir umfram viðmið YTD<b class="${dCls(ytdUm)}">${sign(ytdUm)+fmt(ytdUm,0)}</b></div>
     </div>
+    ${harFyrra && !f ? `<div class="fn" style="margin:0 0 8px;">Enginn samanburður við ${FA}: viðfangið finnst ekki í yfirvinnugreiningu ${FA} (nýtt, sameinað eða flutt milli sviða).</div>` : ''}
     <div class="gr-chart"><canvas id="${cid}"></canvas></div>
     <div class="gr-tbl"><table>
-      <thead><tr><th class="l">Mánuður</th><th>DV stg.</th><th>YV klst.</th><th>YV stöðugildi</th><th>YV%</th>
+      <thead><tr><th class="l">Mánuður</th><th>DV stg.</th><th>YV klst.</th>${f ? `<th>YV klst. ${FA}</th><th>Breyting</th>` : ''}<th>YV stöðugildi</th><th>YV%</th>${f ? `<th>YV% ${FA}</th>` : ''}
         <th>Viðmið (vaktir)</th><th>Raunvaktir</th><th>Umfram viðmið</th></tr></thead>
       <tbody>${rows.join('')}</tbody></table></div>`;
 
   new Chart(document.getElementById(cid).getContext('2d'), {
     type:'bar',
     data:{labels:MN, datasets:[
-      {label:'Yfirvinnustöðugildi', data:g.yv.map(ystg), backgroundColor:g.litur+'cc', borderRadius:3, yAxisID:'y', order:2},
-      ...(g.dv ? [{label:'YV%', type:'line', data:g.yv.map((y,i)=>yvpct(y,g.dv[i])), borderColor:'#1B2A4A', backgroundColor:'#1B2A4A',
+      {label:'Yfirvinnustöðugildi '+META.ar, data:g.yv.map(ystg), backgroundColor:g.litur+'cc', borderRadius:3, yAxisID:'y', order:2},
+      ...(f ? [{label:'Yfirvinnustöðugildi '+FA, data:f.yv.slice(0,NM).map(ystg), backgroundColor:'#cbd5e1', borderRadius:3, yAxisID:'y', order:3}] : []),
+      ...(g.dv ? [{label:'YV% '+META.ar, type:'line', data:g.yv.map((y,i)=>yvpct(y,g.dv[i])), borderColor:'#1B2A4A', backgroundColor:'#1B2A4A',
         borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'y2', order:1}] : []),
+      ...(f ? [{label:'YV% '+FA, type:'line', data:f.yv.slice(0,NM).map((y,i)=>yvpct(y,f.dv[i])), borderColor:'#6b7280', backgroundColor:'#6b7280',
+        borderWidth:2, borderDash:[3,3], pointRadius:2, tension:0.3, yAxisID:'y2', order:1}] : []),
       {label:'Viðmið 3,5%', type:'line', data:Array(NM).fill(3.5), borderColor:'#0D9488', borderDash:[5,4], borderWidth:1.5,
         pointRadius:0, yAxisID:'y2', order:0}
     ]},
