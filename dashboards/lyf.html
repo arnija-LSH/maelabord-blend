@@ -372,7 +372,7 @@ canvas { max-width: 100%; display: block; }
   <div class="panel">
     <div class="ph"><h3 id="top-title">30 kostnaðarmestu lyf — Öll BLEND</h3><span class="hint"><span class="t-stutt"></span> <span class="t-ar"></span></span></div>
     <div class="drug-head">
-      <span>#</span><span>Samheiti lyfs</span><span style="text-align:right">Magn <span class="t-ar"></span></span><span style="text-align:right">Magn <span class="t-fyrra"></span></span><span style="text-align:right">Breyting</span>
+      <span>#</span><span>Samheiti lyfs</span><span></span><span style="text-align:right">Kostnaður <span class="t-ar"></span></span><span style="text-align:right">Breyting frá <span class="t-fyrra"></span></span>
     </div>
     <div class="scroll-y"><div id="top-list"></div></div>
   </div>
@@ -427,7 +427,7 @@ function pct(n, old) {
 }
 function fmtPct(p) {
   if (p===null || p===undefined) return '–';
-  return (p>0?'+':'')+p.toFixed(1)+'%';
+  return (p>0?'+':'')+p.toFixed(1).replace('.',',')+'%';
 }
 function clsPct(p, inv=false) {
   if (p===null) return '';
@@ -882,7 +882,7 @@ function buildDetail(kg) {
   }
 
   // Top 10 drugs
-  const topList = (kd.top||[]).slice(0,10);
+  const topList = (kd.top||[]).filter(t => !/samtals|heildarkostna|hlutfall/i.test(t.name)).slice(0,10);  // án samtölulína
   if (topList.length > 0) {
     out += '<div class="detail-head" style="margin-top:16px">10 kostnaðarmestu lyf</div>';
     const topMax = Math.max(...topList.map(t=>t.s26));
@@ -992,8 +992,12 @@ function renderATC() {
 }
 
 // ─── TOP LYF ─────────────────────────────────────────────────────────────
+// Samtölulínur úr Excel („Heildarkostnaður með álagi“, „… samtals“) eru ekki lyf og eru sýndar sem samantekt neðst
+const ER_SAMTALA = n => /samtals|heildarkostna|hlutfall/i.test(n);
 function renderTop() {
-  const list = getTop().slice(0,30);
+  const all = getTop();
+  const list = all.filter(t => !ER_SAMTALA(t.name)).slice(0,30);
+  const heild = all.find(t => /^heildarkostna/i.test(t.name));
   const name = curKG === 'ALL' ? 'Öll BLEND' : D.kg[curKG]?.name||curKG;
   document.getElementById('top-title').textContent = `30 kostnaðarmestu lyf — ${name}`;
 
@@ -1004,9 +1008,10 @@ function renderTop() {
   const maxV = Math.max(...list.map(t=>t.s26));
   const col = curKG === 'ALL' ? '#2563eb' : KG_COLOR[curKG]||'#2563eb';
 
+  const topSum26 = list.reduce((s,t)=>s+t.s26,0);
   document.getElementById('top-list').innerHTML = list.map((t,i) => {
     const p = pct(t.s26, t.s25);
-    return `<div class="drug-row">
+    return `<div class="drug-row" title="${t.name}: ${mf(t.s26)} m.kr. ${AR} · ${mf(t.s25)} m.kr. ${FYRRA_AR}">
       <div class="drug-rank">${i+1}</div>
       <div class="drug-name">${t.name}</div>
       <div class="drug-bar-wrap"><div class="drug-bar" style="width:${t.s26/maxV*100}%;background:${col}"></div></div>
@@ -1014,7 +1019,13 @@ function renderTop() {
       <div class="drug-delta ${p!==null?(p>10?'red':p<-5?'grn':'amb'):''}">
         ${p!==null ? fmtPct(p) : '<span style="color:var(--muted)">nýtt</span>'}</div>
     </div>`;
-  }).join('');
+  }).join('') + (heild ? `<div class="drug-row" style="font-weight:600;background:var(--hover)">
+      <div class="drug-rank"></div>
+      <div class="drug-name">Þessi ${list.length} lyf samtals — af heildarkostnaði ${mf(heild.s26)} m.kr. (með álagi)</div>
+      <div class="drug-bar-wrap"></div>
+      <div class="drug-val">${mf(topSum26)} m.kr.</div>
+      <div class="drug-delta" style="color:var(--muted)">${heild.s26 ? (topSum26/heild.s26*100).toFixed(0)+'%' : ''}</div>
+    </div>` : '');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────

@@ -170,9 +170,11 @@ function Parse-Top($arr, $store, $info) {
       }
       continue
     }
-    if ($c26 -eq 0 -or $a -eq '') { continue }
+    if ($c26 -eq 0) { continue }
     $s26 = Get-Num $arr $r $c26
     if ($null -eq $s26) { continue }
+    # Lína án ATC-heitis en með upphæð er lyf í topp-30 listanum (er með í „30 kostnaðarsömustu lyfin samtals“)
+    if ($a -eq '') { if ($s26 -le 0) { continue }; $a = '(Lyf án ATC-heitis)' }
     if ($blk.seen.ContainsKey("T$a")) { continue }
     $blk.seen["T$a"] = 1
     $s25 = Get-Num $arr $r $c25; if ($null -eq $s25) { $s25 = 0.0 }
@@ -278,7 +280,10 @@ function Build-Atc($blk, [int]$n) {
   return , $out
 }
 function Build-Top($blk) {
-  $list = @($blk.top | Sort-Object @{ Expression = { $_.s26 }; Descending = $true }, @{ Expression = { $_.idx }; Ascending = $true } | Select-Object -First 30)
+  # 30 kostnaðarmestu lyfin + samtölulínurnar („Heildarkostnaður með álagi“, „… samtals“), sem mælaborðið sýnir sér
+  $rodun = @{ Expression = { $_.s26 }; Descending = $true }, @{ Expression = { $_.idx }; Ascending = $true }
+  $samtala = { $_.name -match 'samtals|heildarkostna|hlutfall' }
+  $list = @(@($blk.top | Where-Object $samtala | Sort-Object $rodun) + @($blk.top | Where-Object { -not (& $samtala) } | Sort-Object $rodun | Select-Object -First 30))
   $out = New-Object System.Collections.ArrayList
   foreach ($t in $list) { [void]$out.Add([ordered]@{ name = $t.name; s26 = (Rnd $t.s26); s25 = (Rnd $t.s25) }) }
   return , $out
